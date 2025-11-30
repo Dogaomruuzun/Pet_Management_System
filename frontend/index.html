@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Pet Management Pro</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="light">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar">
+        <h2>🐾 Vet Panel</h2>
+        <ul>
+            <li onclick="openPage('dashboard')">Dashboard</li>
+            <li onclick="openPage('pets')">Pets</li>
+            <li onclick="openPage('medical')">Medical History</li>
+            <li onclick="openPage('vaccines')">Vaccinations</li>
+            <li onclick="openPage('weight')">Weight Tracking</li>
+            <li onclick="openPage('appointments')">Appointments</li>
+            <li onclick="openPage('ai')">AI Assistant</li>
+            <li onclick="openPage('owner')">Owner Info</li>
+        </ul>
+
+        <button id="darkToggle" onclick="toggleDark()">Dark Mode</button>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main>
+
+        <!-- LOGIN PAGE -->
+        <section id="loginPage" class="page active">
+            <h1>Veterinarian Login</h1>
+            <input id="loginEmail" placeholder="Email">
+            <input id="loginPassword" type="password" placeholder="Password">
+            <select id="loginRole">
+                <option value="vet">Veterinarian</option>
+                <option value="owner">Owner</option>
+            </select>
+            <button onclick="login()">Login</button>
+        </section>
+
+        <!-- DASHBOARD -->
+        <section id="dashboard" class="page">
+            <h1>Dashboard</h1>
+
+            <div class="grid-3">
+                <div class="card">
+                    <h3>Total Pets</h3>
+                    <p id="dashPets">0</p>
+                </div>
+                <div class="card">
+                    <h3>Upcoming Appointments</h3>
+                    <p id="dashAppointments">0</p>
+                </div>
+                <div class="card">
+                    <h3>Vaccines Due Soon</h3>
+                    <p id="dashVaccines">0</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Pet Type Distribution</h3>
+                <canvas id="chartPetTypes"></canvas>
+            </div>
+        </section>
+
+        <!-- PETS PAGE -->
+        <section id="pets" class="page">
+            <h1>Pets</h1>
+
+            <div class="card">
+                <h2>Add New Pet</h2>
+                <input id="petName" placeholder="Name">
+                <input id="petAge" type="number" placeholder="Age">
+                <input id="petType" placeholder="Type (Dog, Cat...)">
+                <input id="petOwner" placeholder="Owner ID">
+                <input id="petPhoto" placeholder="Photo URL">
+                <button onclick="addPet()">Add Pet</button>
+            </div>
+
+            <div id="petList" class="grid"></div>
+        </section>
+
+        <!-- MEDICAL HISTORY -->
+        <section id="medical" class="page">
+            <h1>Medical History</h1>
+
+            <div class="card">
+                <h2>Add Record</h2>
+                <input id="medPetId" placeholder="Pet ID">
+                <input id="medDate" type="date">
+                <input id="medDiag" placeholder="Diagnosis">
+                <input id="medTreat" placeholder="Treatment">
+                <textarea id="medNotes" placeholder="Notes"></textarea>
+                <input id="medAttach" placeholder="Attachment URL">
+                <button onclick="addMedical()">Add</button>
+            </div>
+
+            <div id="medicalList"></div>
+        </section>
+
+        <!-- VACCINATIONS -->
+        <section id="vaccines" class="page">
+            <h1>Vaccinations</h1>
+
+            <div class="card">
+                <h2>Add Vaccine Record</h2>
+                <input id="vacPetId" placeholder="Pet ID">
+                <input id="vacName" placeholder="Vaccine Name">
+                <input id="vacGiven" type="date">
+                <input id="vacNext" type="date">
+                <button onclick="addVaccine()">Add</button>
+            </div>
+
+            <div id="vaccineList"></div>
+        </section>
+
+        <!-- WEIGHT TRACKING -->
+        <section id="weight" class="page">
+            <h1>Weight Tracking</h1>
+
+            <div class="card">
+                <h2>Add Weight</h2>
+                <input id="wPetId" placeholder="Pet ID">
+                <input id="wValue" type="number" placeholder="Weight (kg)">
+                <input id="wDate" type="date">
+                <button onclick="addWeight()">Add</button>
+            </div>
+
+            <div class="card">
+                <h2>Weight Chart</h2>
+                <canvas id="weightChart"></canvas>
+            </div>
+
+            <div id="weightList"></div>
+        </section>
+
+        <!-- APPOINTMENTS -->
+        <section id="appointments" class="page">
+            <h1>Appointments</h1>
+
+            <div class="card">
+                <h2>New Appointment</h2>
+                <input id="aPetId" placeholder="Pet ID">
+                <input id="aDate" type="date">
+                <input id="aTime" type="time">
+                <input id="aReason" placeholder="Reason">
+                <input id="aVet" placeholder="Vet ID">
+                <button onclick="addAppointment()">Add Appointment</button>
+            </div>
+
+            <div id="appointmentList"></div>
+        </section>
+
+        <!-- OWNER INFO -->
+        <section id="owner" class="page">
+            <h1>Owner Info</h1>
+
+            <input id="ownerSearch" placeholder="Owner ID">
+            <button onclick="getOwnerPets()">Search</button>
+
+            <div id="ownerPets" class="grid"></div>
+        </section>
+
+        <!-- AI ASSISTANT -->
+        <section id="ai" class="page">
+            <h1>AI Assistant</h1>
+
+            <div class="card">
+                <h2>Lifespan Prediction</h2>
+                <input id="aiAge" type="number" placeholder="Age">
+                <button onclick="aiLifespan()">Predict</button>
+                <p id="aiLifeResult"></p>
+            </div>
+
+            <div class="card">
+                <h2>Health Score</h2>
+                <input id="aiHSWeight" type="number" placeholder="Weight">
+                <input id="aiHSAge" type="number" placeholder="Age">
+                <button onclick="aiHealth()">Predict</button>
+                <p id="aiHealthResult"></p>
+            </div>
+
+            <div class="card">
+                <h2>Breed Risk</h2>
+                <input id="aiBreedAge" type="number" placeholder="Age">
+                <button onclick="aiBreed()">Predict</button>
+                <p id="aiBreedResult"></p>
+            </div>
+        </section>
+
+     <section id="petDetail" class="page">
+         <h1>Pet Details</h1>
+         <div id="petDetailContent"></div>
+      </section>
+
+
+    </main>
+
+<script src="script.js"></script>
+</body>
+</html>

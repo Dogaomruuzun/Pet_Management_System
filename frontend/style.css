@@ -1,0 +1,295 @@
+/* RESET */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", sans-serif;
+}
+
+body.light {
+    --bg: #f5f6fa;
+    --card: #fff;
+    --text: #2f3640;
+    --sidebar: #4cd137;
+    --sidebarText: white;
+    --input: #f0f0f0;
+    --border: #dcdde1;
+}
+
+body.dark {
+    --bg: #1e272e;
+    --card: #2f3640;
+    --text: #f5f6fa;
+    --sidebar: #2ecc71;
+    --sidebarText: white;
+    --input: #3d3d3d;
+    --border: #444;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+}
+
+/* SIDEBAR */
+#sidebar {
+    width: 240px;
+    min-height: 100vh;
+    background: var(--sidebar);
+    color: var(--sidebarText);
+    padding: 25px;
+    position: fixed;
+    left: 0;
+    top: 0;
+}
+
+#sidebar h2 {
+    margin-bottom: 20px;
+    font-size: 26px;
+}
+
+#sidebar ul {
+    list-style: none;
+}
+
+#sidebar li {
+    padding: 12px;
+    margin: 6px 0;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: 0.2s;
+    font-size: 18px;
+}
+
+#sidebar li:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+#darkToggle {
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px;
+    background: #273c75;
+    border: none;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+#darkToggle:hover {
+    background: #192a56;
+}
+
+/* MAIN AREA */
+main {
+    margin-left: 260px;
+    padding: 30px;
+    width: calc(100% - 260px);
+}
+
+/* PAGE SECTION */
+.page {
+    display: none;
+}
+
+.page.active {
+    display: block;
+}
+
+h1 {
+    font-size: 32px;
+    margin-bottom: 25px;
+}
+
+/* CARD */
+.card {
+    background: var(--card);
+    padding: 20px;
+    border-radius: 14px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border);
+}
+
+.card h2 {
+    font-size: 22px;
+    margin-bottom: 12px;
+}
+
+/* INPUT & BUTTON */
+input, select, textarea {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--input);
+    color: var(--text);
+}
+
+button {
+    padding: 12px 18px;
+    border: none;
+    border-radius: 8px;
+    background: #4cd137;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 10px;
+    transition: 0.2s;
+}
+
+button:hover {
+    background: #44bd32;
+}
+
+/* GRID */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 18px;
+}
+
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
+}
+
+/* PET CARD */
+.pet-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid var(--border);
+}
+
+.pet-card img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.pet-card h3 {
+    margin-top: 10px;
+    margin-bottom: 4px;
+}
+
+.pet-card p {
+    font-size: 14px;
+}
+
+/* LIST CONTAINERS */
+#medicalList div,
+#vaccineList div,
+#appointmentList div,
+#weightList div {
+    background: var(--card);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+}
+
+/* CHART */
+canvas {
+    width: 100% !important;
+    height: 300px !important;
+}
+
+/* MODAL */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.modal-content {
+    background: var(--card);
+    width: 350px;
+    padding: 22px;
+    margin: 120px auto;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.close-btn {
+    background: #e84118;
+    margin-top: 10px;
+}
+
+.close-btn:hover {
+    background: #c23616;
+}
+
+/* LOGIN PAGE */
+#loginPage {
+    max-width: 420px;
+    margin: auto;
+    padding-top: 80px;
+}
+
+#loginPage h1 {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+/* RESPONSIVE LAYOUT */
+@media (max-width: 900px) {
+    #sidebar {
+        width: 200px;
+    }
+    main {
+        margin-left: 210px;
+        width: calc(100% - 210px);
+    }
+}
+
+@media (max-width: 700px) {
+    #sidebar {
+        position: absolute;
+        left: -260px;
+        transition: 0.3s;
+    }
+
+    #sidebar.show {
+        left: 0;
+    }
+
+    main {
+        margin-left: 0;
+        width: 100%;
+    }
+
+}
+.pet-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.edit-btn, .delete-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.edit-btn {
+    background: #0097e6;
+    color: white;
+}
+
+.delete-btn {
+    background: #e84118;
+    color: white;
+}
+
