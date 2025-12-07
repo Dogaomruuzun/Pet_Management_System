@@ -119,7 +119,9 @@ h1 {
 }
 
 /* INPUT & BUTTON */
-input, select, textarea {
+input,
+select,
+textarea {
     width: 100%;
     padding: 12px;
     margin: 8px 0;
@@ -195,9 +197,74 @@ button:hover {
 }
 
 /* CHART */
+/* CHART */
 canvas {
     width: 100% !important;
     height: 300px !important;
+}
+
+.chart-container {
+    max-width: 500px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* CARDS DASHBOARD ALTERATIONS */
+#dashboard .card {
+    transition: transform 0.2s;
+}
+
+#dashboard .card:hover {
+    transform: translateY(-2px);
+}
+
+/* FILE INPUT */
+.file-upload-wrapper {
+    border: 2px dashed var(--border);
+    padding: 20px;
+    text-align: center;
+    border-radius: 8px;
+    background: var(--input);
+    cursor: pointer;
+    margin: 10px 0;
+}
+
+.file-upload-wrapper:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* SEARCH INPUTS */
+input[type="text"][id$="Search"] {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--input);
+    color: var(--text);
+    font-size: 16px;
+}
+
+/* RECORD LIST ITEMS */
+.record-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.record-item div {
+    flex: 1;
+}
+
+.record-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: 20px;
 }
 
 /* MODAL */
@@ -209,15 +276,21 @@ canvas {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.55);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
 }
 
 .modal-content {
     background: var(--card);
-    width: 350px;
+    width: 90%;
+    max-width: 500px;
     padding: 22px;
-    margin: 120px auto;
     border-radius: 12px;
     border: 1px solid var(--border);
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .close-btn {
@@ -246,6 +319,7 @@ canvas {
     #sidebar {
         width: 200px;
     }
+
     main {
         margin-left: 210px;
         width: calc(100% - 210px);
@@ -269,13 +343,15 @@ canvas {
     }
 
 }
+
 .pet-actions {
     margin-top: 10px;
     display: flex;
     gap: 10px;
 }
 
-.edit-btn, .delete-btn {
+.edit-btn,
+.delete-btn {
     padding: 6px 12px;
     border: none;
     border-radius: 6px;
@@ -293,3 +369,8 @@ canvas {
     color: white;
 }
 
+.chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+}

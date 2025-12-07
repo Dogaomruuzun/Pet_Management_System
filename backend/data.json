@@ -1,0 +1,197 @@
+{
+    "users": [
+        {
+            "id": "670808b0-dc72-4ff0-a9aa-cdf707664be8",
+            "name": "Melis Gedik",
+            "email": "deneme123@gmail.com",
+            "password": "12345",
+            "role": "vet"
+        },
+        {
+            "id": "98027fa3-ac01-4140-8281-84dccae415a8",
+            "name": "Melis",
+            "email": "deneme12345@gmail.com",
+            "password": "12345",
+            "role": "owner",
+            "phone": "328094829",
+            "address": "sakldjsadjlasd"
+        },
+        {
+            "id": "2aef24c5-7f09-427a-8012-b94f969d147d",
+            "name": "Doga Omruuzun",
+            "email": "",
+            "password": "123",
+            "role": "owner",
+            "phone": "21371982371",
+            "address": "dsakdlasjdas"
+        },
+        {
+            "id": "21398712371",
+            "name": "Aysenur",
+            "email": "alasjdkasld",
+            "password": "123",
+            "role": "owner",
+            "phone": "4238593804",
+            "address": "sajldsajlkcs"
+        },
+        {
+            "id": "890283942",
+            "name": "Murat",
+            "email": "",
+            "password": "123",
+            "role": "owner",
+            "phone": "23490824",
+            "address": "asdsopda"
+        },
+        {
+            "id": "238094238049",
+            "name": "Rana",
+            "email": "sdkf;lkd",
+            "password": "123",
+            "role": "owner",
+            "phone": "238402384",
+            "address": "vkjsdlkfj"
+        }
+    ],
+    "pets": [
+        {
+            "id": "e7e56d9e-3806-4f42-8ff7-532449c8dc55",
+            "name": "BizzikCan",
+            "age": 2,
+            "type": "Cat",
+            "photo": "http://127.0.0.1:5000/uploads/152c30b1-25fb-4ef7-95ce-bebfabe23fa9.png",
+            "ownerId": "3582743920"
+        },
+        {
+            "id": "755476da-1f5e-45d2-b3d7-9cc586445dff",
+            "name": "Kraker",
+            "age": 1,
+            "type": "Cat",
+            "photo": "https://via.placeholder.com/150",
+            "ownerId": "21398712371"
+        },
+        {
+            "id": "5f2de37c-68d8-4d40-a721-e82b741d555f",
+            "name": "Zemzem",
+            "age": 0,
+            "type": "Bird",
+            "photo": "https://via.placeholder.com/150",
+            "ownerId": "890283942"
+        },
+        {
+            "id": "4c8a7f8a-0ace-4ee7-a388-2c0b62c60e23",
+            "name": "Mavis",
+            "age": 1,
+            "type": "Hamster",
+            "photo": "https://via.placeholder.com/150",
+            "ownerId": "238094238049"
+        }
+    ],
+    "medical_history": [
+        {
+            "id": "cd588f84-7153-49ed-ad9c-fa582ad7f0a1",
+            "petId": "e7e56d9e-3806-4f42-8ff7-532449c8dc55",
+            "date": "2025-04-10",
+            "diagnosis": "Ishal",
+            "treatment": "Prebiyotik",
+            "notes": "BizzikCan diye isim mi olur lo...",
+            "attachment": ""
+        },
+        {
+            "id": "ba4f70d5-e79a-49d9-9f4a-56e7b468ac26",
+            "petId": "e7e56d9e-3806-4f42-8ff7-532449c8dc55",
+            "date": "2025-06-13",
+            "diagnosis": "kabiz",
+            "treatment": "prebiyotik",
+            "notes": "bu nasil hayvan yaaa",
+            "attachment": ""
+        },
+        {
+            "id": "64a7b00a-377a-47f2-a12b-787d4422e2bb",
+            "petId": "755476da-1f5e-45d2-b3d7-9cc586445dff",
+            "date": "2025-12-06",
+            "diagnosis": "kontrol",
+            "treatment": "-",
+            "notes": "",
+            "attachment": ""
+        },
+        {
+            "id": "c7bd8403-f23b-4c84-9a92-da042352d902",
+            "petId": "5f2de37c-68d8-4d40-a721-e82b741d555f",
+            "date": "2025-12-06",
+            "diagnosis": "ishal",
+            "treatment": "kefir icirdik",
+            "notes": "zemzem cok korkak bir kus, dikkatle ele alinmali.",
+            "attachment": ""
+        },
+        {
+            "id": "e749eeb6-442b-4b26-99e9-850f0b9d6f49",
+            "petId": "4c8a7f8a-0ace-4ee7-a388-2c0b62c60e23",
+            "date": "2025-12-06",
+            "diagnosis": "on disinde kirik var",
+            "treatment": "dis alaninda uzman doktora sevk edildi",
+            "notes": "halsizlik goruldu, takip gerekiyor.",
+            "attachment": ""
+        }
+    ],
+    "vaccines": [
+        {
+            "id": "2272483e-9bd6-4be1-abc1-d8da3908746c",
+            "petId": "e7e56d9e-3806-4f42-8ff7-532449c8dc55",
+            "vaccineName": "Karma",
+            "dateGiven": "2025-12-06",
+            "nextDue": "2026-12-09"
+        },
+        {
+            "id": "0ff29354-5d1c-42d5-8d06-a875b0c4c44c",
+            "petId": "755476da-1f5e-45d2-b3d7-9cc586445dff",
+            "vaccineName": "kuduz",
+            "dateGiven": "2024-12-07",
+            "nextDue": "2025-12-07"
+        }
+    ],
+    "weights": [
+        {
+            "id": "2b73c8db-80eb-4230-89e0-e3cff0c32c55",
+            "petId": "e7e56d9e-3806-4f42-8ff7-532449c8dc55",
+            "weight": 2,
+            "date": "0005-04-10"
+        },
+        {
+            "id": "23182f63-952f-4b74-9de9-3151951c211c",
+            "petId": "e7e56d9e-3806-4f42-8ff7-532449c8dc55",
+            "weight": 4,
+            "date": "2025-04-10"
+        },
+        {
+            "id": "c06aa0f2-2bbb-4077-864b-36e7b892a5d9",
+            "petId": "e7e56d9e-3806-4f42-8ff7-532449c8dc55",
+            "weight": 5,
+            "date": "2026-12-06"
+        },
+        {
+            "id": "db8c14b5-3b75-47a4-891d-1690adc871d6",
+            "petId": "755476da-1f5e-45d2-b3d7-9cc586445dff",
+            "weight": 8,
+            "date": "2025-12-06"
+        }
+    ],
+    "appointments": [
+        {
+            "id": "61a3e8b7-b297-4fb4-85ad-3449575c5a9e",
+            "petId": "e7e56d9e-3806-4f42-8ff7-532449c8dc55",
+            "date": "2025-12-13",
+            "time": "10:00",
+            "reason": "Ishal kontrol",
+            "vetId": "670808b0-dc72-4ff0-a9aa-cdf707664be8"
+        },
+        {
+            "id": "66194ad1-48d0-451d-b6b5-5707febe0b60",
+            "petId": "755476da-1f5e-45d2-b3d7-9cc586445dff",
+            "date": "2025-12-07",
+            "time": "14:00",
+            "reason": "selo bant yemis",
+            "vetId": "670808b0-dc72-4ff0-a9aa-cdf707664be8"
+        }
+    ]
+}
