@@ -41,3 +41,15 @@ node_modules/
 backend/model/
 *.pkl
 
+
+# Databases
+*.db
+*.sqlite
+
+# User Uploads
+backend/uploads/
+
+# Temporary Verification Scripts
+verify_*.py
+verify_output.txt
+diagnose_llm_result.json
