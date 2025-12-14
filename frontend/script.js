@@ -539,6 +539,81 @@ function openPage(pageId) {
     if (pageId === 'appointments') loadAppointments();
 }
 
+// ===================== AI: LLM Symptom Assistant =====================
+
+async function aiDiagnoseLLM() {
+    const species = document.getElementById('llmSpecies').value || '';
+    const ageRaw = document.getElementById('llmAge').value;
+    const symptoms = (document.getElementById('llmSymptoms').value || '').trim();
+    const modeSel = document.getElementById('llmMode');
+    const mode = modeSel ? (modeSel.value || '') : '';
+
+    const age = ageRaw === '' ? null : Number(ageRaw);
+    const loading = document.getElementById('aiLLMLoading');
+    const out = document.getElementById('aiLLMResult');
+    const disc = document.getElementById('aiLLMDisclaimer');
+    const srcEl = document.getElementById('aiLLMSource');
+
+    out.textContent = '';
+    disc.textContent = '';
+    if (srcEl) srcEl.textContent = '';
+
+    if (!symptoms) {
+        alert('Please enter symptoms');
+        return;
+    }
+
+    loading.style.display = 'inline';
+    try {
+        const res = await fetch('http://127.0.0.1:5000/ai/diagnose_llm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ species, age, symptoms, mode })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data?.error || 'Request failed');
+        }
+        // Prefer structured JSON if present
+        const hasConds = Array.isArray(data.conditions) && data.conditions.length > 0;
+        const hasFlags = Array.isArray(data.red_flags) && data.red_flags.length > 0;
+        const hasCare  = Array.isArray(data.care) && data.care.length > 0;
+
+        if (hasConds || hasFlags || hasCare) {
+            const lines = [];
+            if (hasConds) {
+                lines.push('Likely conditions:');
+                data.conditions.forEach(c => {
+                    const nm = (c && c.name) ? c.name : '';
+                    const rs = (c && c.reason) ? c.reason : '';
+                    lines.push(`- ${nm}${rs ? ' — ' + rs : ''}`);
+                });
+            }
+            if (hasFlags) {
+                lines.push('\nRed flags:');
+                data.red_flags.forEach(x => lines.push(`- ${x}`));
+            }
+            if (hasCare) {
+                lines.push('\nSupportive care:');
+                data.care.forEach(x => lines.push(`- ${x}`));
+            }
+            out.textContent = lines.join('\n');
+        } else {
+            // Show raw/answer text if structured items are empty
+            out.textContent = data.answer || data.raw || '(No answer)';
+        }
+        disc.textContent = data.disclaimer || '';
+        if (srcEl) {
+            const src = (data.source === 'fallback') ? 'Assisted (fallback used)' : 'LLM';
+            srcEl.textContent = `Source: ${src}`;
+        }
+    } catch (e) {
+        out.textContent = `Error: ${e.message}`;
+    } finally {
+        loading.style.display = 'none';
+    }
+}
+
 // File upload preview
 const petPhotoFile = document.getElementById("petPhotoFile");
 if (petPhotoFile) {
