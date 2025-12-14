@@ -5,6 +5,10 @@ from flask_cors import CORS
 
 # -------------------- PATHS --------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+import sys
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+from db import init_db as db_init, fetch_all as db_fetch_all, replace_all as db_replace_all, DB_FILE
 DATA_FILE = os.path.join(BASE_DIR, "data.json")
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 MODEL_DIR = os.path.join(BASE_DIR, "model")
@@ -29,22 +33,50 @@ appointments = []
 
 
 def load_data():
+    """Populate in-memory lists from SQLite (and migrate from data.json if present)."""
     global users, pets, medical_history, vaccines, weights, appointments
-    if os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                users = data.get("users", [])
-                pets = data.get("pets", [])
-                medical_history = data.get("medical_history", [])
-                vaccines = data.get("vaccines", [])
-                weights = data.get("weights", [])
-                appointments = data.get("appointments", [])
-        except Exception as e:
-            print(f"Error loading data: {e}")
+    try:
+        # Ensure DB and schema exist
+        db_init()
+
+        data = db_fetch_all()
+        # If DB is empty but a legacy JSON file exists, migrate it
+        if not any(data.values()) and os.path.exists(DATA_FILE):
+            try:
+                with open(DATA_FILE, "r", encoding="utf-8") as f:
+                    json_data = json.load(f)
+                for k in ["users", "pets", "medical_history", "vaccines", "weights", "appointments"]:
+                    json_data.setdefault(k, [])
+                db_replace_all(json_data)
+                data = db_fetch_all()
+                print("Migrated legacy data.json into SQLite:", DB_FILE)
+            except Exception as e:
+                print(f"Error migrating data.json to DB: {e}")
+
+        users = data.get("users", [])
+        pets = data.get("pets", [])
+        medical_history = data.get("medical_history", [])
+        vaccines = data.get("vaccines", [])
+        weights = data.get("weights", [])
+        appointments = data.get("appointments", [])
+    except Exception as e:
+        print(f"Error initializing/loading DB: {e}")
+        # Fallback to legacy JSON only if DB access fails entirely
+        if os.path.exists(DATA_FILE):
+            try:
+                with open(DATA_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    users = data.get("users", [])
+                    pets = data.get("pets", [])
+                    medical_history = data.get("medical_history", [])
+                    vaccines = data.get("vaccines", [])
+                    weights = data.get("weights", [])
+                    appointments = data.get("appointments", [])
+            except Exception as e2:
+                print(f"Error loading legacy JSON: {e2}")
+                users, pets, medical_history, vaccines, weights, appointments = [], [], [], [], [], []
+        else:
             users, pets, medical_history, vaccines, weights, appointments = [], [], [], [], [], []
-    else:
-        users, pets, medical_history, vaccines, weights, appointments = [], [], [], [], [], []
 
 
 def save_data():
@@ -56,11 +88,18 @@ def save_data():
         "weights": weights,
         "appointments": appointments,
     }
+    # Persist to SQLite
+    try:
+        db_init()
+        db_replace_all(data)
+    except Exception as e:
+        print(f"Error saving to DB: {e}")
+    # Keep writing legacy JSON as a backup for now
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
     except Exception as e:
-        print(f"Error saving data: {e}")
+        print(f"Error saving legacy JSON: {e}")
 
 
 load_data()
@@ -85,6 +124,259 @@ breed_model = _load_model(os.path.join(MODEL_DIR, "breed_model.pkl"))
 
 diagnose_vectorizer = _load_model(os.path.join(MODEL_DIR, "diagnose_vectorizer.pkl"))
 diagnose_model = _load_model(os.path.join(MODEL_DIR, "diagnose_model.pkl"))
+
+
+# -------------------- LLM (FLAN-T5 veterinary QA) --------------------
+_vet_llm_pipe = None
+_vet_llm_device = "cpu"
+import threading
+_vet_llm_lock = threading.Lock()
+
+
+def get_vet_llm_pipeline():
+    global _vet_llm_pipe
+    if _vet_llm_pipe is not None:
+        return _vet_llm_pipe
+    with _vet_llm_lock:
+        if _vet_llm_pipe is not None:
+            return _vet_llm_pipe
+        try:
+            import torch
+            from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
+
+            model_name = os.environ.get(
+                "VET_QA_MODEL", "ahmed807762/flan-t5-base-veterinaryQA_data-v2"
+            )
+
+            # Force CPU unless explicitly overridden
+            device = "cuda" if (hasattr(torch, "cuda") and torch.cuda.is_available()) else "cpu"
+            if os.environ.get("VET_QA_FORCE_CPU", "1") == "1":
+                device = "cpu"
+
+            tok = AutoTokenizer.from_pretrained(model_name)
+
+            def _load_model():
+                try:
+                    return AutoModelForSeq2SeqLM.from_pretrained(
+                        model_name,
+                        dtype=torch.float32,
+                        low_cpu_mem_usage=False,
+                    )
+                except TypeError:
+                    # Older transformers
+                    return AutoModelForSeq2SeqLM.from_pretrained(
+                        model_name,
+                        torch_dtype=torch.float32,
+                        low_cpu_mem_usage=False,
+                    )
+
+            mdl = _load_model()
+            mdl.eval()
+
+            # pipeline device: -1 for CPU, GPU index for CUDA
+            device_arg = -1 if device == "cpu" else 0
+            _pipe = pipeline(
+                "text2text-generation",
+                model=mdl,
+                tokenizer=tok,
+                device=device_arg,
+                framework="pt",
+            )
+            print(f"Device set to use {device}")
+            print(f"Loaded veterinary QA model: {model_name}")
+
+            # Save globals
+            global _vet_llm_device
+            _vet_llm_device = device
+            _vet_llm_pipe = _pipe
+            return _vet_llm_pipe
+        except Exception as e:
+            print(f"Failed to load veterinary QA model: {e}")
+            _vet_llm_pipe = None
+            return None
+
+
+# Optional: warm-up the LLM in background so first request is faster
+def _warmup_llm_async():
+    try:
+        import threading
+
+        def _task():
+            pipe = get_vet_llm_pipeline()
+            if pipe is None:
+                return
+            try:
+                pipe("Warmup question: Provide one word.", max_new_tokens=8)
+            except Exception:
+                pass
+
+        if os.environ.get("VET_QA_WARMUP", "1") == "1":
+            threading.Thread(target=_task, daemon=True).start()
+    except Exception:
+        pass
+
+_warmup_llm_async()
+
+
+# -------------------- Rule-based fallback for suggestions --------------------
+
+def _species_group(name: str) -> str:
+    s = (name or "").strip().lower()
+    small = {"hamster", "guinea pig", "guinea-pig", "rabbit", "bunny", "gerbil", "rat", "mouse", "mice", "chinchilla"}
+    birds = {"bird", "parrot", "budgie", "budgerigar", "cockatiel", "finch"}
+    reptiles = {"reptile", "turtle", "tortoise", "snake", "lizard", "gecko", "bearded dragon"}
+    if s in small or any(k in s for k in ["hamster", "guinea", "rabbit", "gerbil", "rat", "mouse", "chinch"]):
+        return "small_mammal"
+    if s in birds or any(k in s for k in ["parrot", "budg", "cockatiel", "finch", "bird"]):
+        return "bird"
+    if s in reptiles or any(k in s for k in ["turtle", "tortoise", "snake", "lizard", "gecko", "dragon"]):
+        return "reptile"
+    if any(k in s for k in ["dog", "cat", "canine", "feline"]):
+        return "dogcat"
+    return "other"
+
+
+def _fallback_suggestions(species: str, age, symptoms: str):
+    text = (symptoms or "").lower()
+    grp = _species_group(species)
+    conds = []
+    reds = []
+    care = []
+
+    def add_cond(name, reason):
+        if len(conds) < 3:
+            conds.append({"name": name, "reason": reason})
+
+    # Common flags from symptoms
+    lethargy = "letharg" in text or "tired" in text
+    anorexia = "no appetite" in text or "not eating" in text or "reduced appetite" in text or "anorex" in text
+    gi = any(k in text for k in ["vomit", "diarr", "stool", "poop", "constipat"])  # GI signs
+    resp = any(k in text for k in ["cough", "sneez", "wheeze", "breath", "runny nose", "nasal"])  # respiratory
+    pain = any(k in text for k in ["pain", "aggress", "hunch", "limp", "sore", "guard"])  # pain/behaviour
+    # External wound/lameness keywords
+    bleeding = any(k in text for k in ["bleed", "blood"]) and any(k in text for k in ["paw", "pad", "nail", "claw", "dewclaw", "toe", "foot", "leg"])
+    paw_wound = any(k in text for k in ["paw", "pad", "nail", "claw", "dewclaw", "toe"]) and any(k in text for k in ["cut", "wound", "tear", "lacer", "broken", "rip"])
+    lameness = any(k in text for k in ["limp", "non weight", "non-weight", "not weight", "not pressing", "holding up", "favoring", "not putting weight"]) or ("not pressing" in text)
+
+    if grp == "small_mammal":
+        if anorexia or lethargy or gi:
+            add_cond("GI stasis/ileus", "Small mammals can stop eating from pain or stress; gut slows causing lethargy and anorexia")
+        if pain or anorexia:
+            add_cond("Dental disease", "Overgrown teeth cause mouth pain and reduced eating; common in hamsters/rodents")
+        if resp:
+            add_cond("Respiratory infection", "Sneezing/ocular-nasal discharge or effortful breathing suggests airway infection")
+        if len(conds) == 0:
+            add_cond("Stress or environmental issue", "Sudden change, overheating/cold, or enclosure problems can cause lethargy/anorexia")
+
+        reds = [
+            "Not eating/drinking > 24 hours",
+            "Laboured or noisy breathing",
+            "Severe abdominal bloating or profound weakness",
+            "Blood in stool/urine or seizures",
+        ]
+        care = [
+            "Keep warm, quiet, and minimize handling",
+            "Offer familiar food and fresh water; do not force-feed if choking risk",
+            "Check enclosure temperature and bedding; reduce stressors",
+            "Arrange prompt exam — small mammals decline quickly",
+        ]
+    elif grp == "dogcat":
+        # Prioritize external injuries when present
+        if bleeding or paw_wound or lameness:
+            add_cond("Torn/broken nail (quick injury)", "Bleeding from nail with reluctance to bear weight is typical")
+            add_cond("Paw pad laceration or foreign body", "Blood on paw/pads; glass/thorns cause pain and non‑weight bearing")
+            add_cond("Sprain/strain or fracture", "Lameness and guarding the limb after activity/trauma")
+            reds = [
+                "Bleeding that does not stop after 5–10 minutes of firm pressure",
+                "Deep/dirty wound, bone visible, or nail partly avulsed",
+                "Severe swelling, cold/blue toes, or non‑weight bearing",
+            ]
+            care = [
+                "Apply gentle direct pressure with clean gauze for 5–10 minutes",
+                "Rinse paw with saline/water to remove debris; avoid harsh chemicals",
+                "Cover with a light bandage/sock; prevent licking (cone)",
+                "Do NOT give human pain meds; arrange veterinary exam",
+            ]
+        else:
+            if gi:
+                add_cond("Gastroenteritis", "Vomiting/diarrhea with lethargy is consistent; monitor hydration")
+            if pain or lethargy:
+                add_cond("Pain or systemic illness", "Pain, fever, or endocrine disease can reduce appetite and activity")
+            if resp:
+                add_cond("Upper respiratory disease", "Cough/sneeze with malaise suggests airway infection/inflammation")
+            if len(conds) == 0:
+                add_cond("Non-specific illness", "Many conditions present with lethargy and anorexia — needs exam")
+            reds = [
+                "Continuous vomiting or diarrhea, or blood present",
+                "Breathing difficulty, pale/blue gums",
+                "Collapse, seizures, or severe pain",
+            ]
+            care = [
+                "Provide water access; small frequent sips",
+                "Withhold rich treats; bland diet if advised",
+                "Seek vet care if symptoms persist >24–48h or any red flag",
+            ]
+    elif grp == "bird":
+        add_cond("Respiratory infection", "Birds commonly mask illness until advanced; nasal discharge or effort is concerning")
+        add_cond("Nutritional or husbandry issue", "Diet or temperature/air quality problems can cause lethargy and anorexia")
+        add_cond("GI disease/parasites", "Soft stool/regurgitation with appetite changes suggests GI disease")
+        reds = [
+            "Open‑mouth breathing, tail bobbing",
+            "Not eating for a day, fluffed and unresponsive",
+            "Bleeding or fractures",
+        ]
+        care = [
+            "Warm, quiet environment; reduce drafts",
+            "Fresh water; offer familiar seed/pellets and soft foods",
+            "Urgent avian vet exam if breathing changes or not eating",
+        ]
+    elif grp == "reptile":
+        add_cond("Temperature/husbandry problem", "Incorrect heat/UVB often causes anorexia and lethargy")
+        add_cond("GI or respiratory disease", "Mucus, wheeze, or abnormal stool indicate infection/parasites")
+        add_cond("Nutritional deficiency", "Calcium/UVB problems lead to weakness and poor appetite")
+        reds = [
+            "Open‑mouth breathing, profound weakness",
+            "Not eating >1–2 weeks in juveniles",
+            "Neurologic signs or blood",
+        ]
+        care = [
+            "Verify temperatures and UVB; provide proper basking gradient",
+            "Offer appropriate prey/greens; ensure hydration",
+            "Reptile‑experienced vet if no improvement",
+        ]
+    else:
+        add_cond("Non‑specific illness", "Lethargy and anorexia are non‑specific — needs exam")
+        add_cond("Pain/stress", "Environmental or painful conditions reduce appetite and activity")
+        add_cond("Infection", "Systemic or respiratory infections can present with these signs")
+        reds = [
+            "Breathing difficulty or collapse",
+            "Continuous vomiting/diarrhea or blood",
+            "Severe pain or seizures",
+        ]
+        care = [
+            "Quiet, warm environment; easy access to water",
+            "Avoid new foods/treats; monitor intake and output",
+            "Vet visit if symptoms persist or any red flag",
+        ]
+
+    return {"conditions": conds, "red_flags": reds, "care": care}
+
+
+def _update_entry(collection, item_id, data):
+    for item in collection:
+        if item.get("id") == item_id:
+            item.update(data)
+            save_data()
+            return item
+    return None
+
+def _delete_entry(collection, item_id):
+    for item in list(collection):
+        if item.get("id") == item_id:
+            collection.remove(item)
+            save_data()
+            return True
+    return False
 
 
 def generate_id():
@@ -190,23 +482,17 @@ def add_owner():
 @app.post("/owner/edit")
 def edit_owner():
     data = request.json or {}
-    for u in users:
-        if u.get("id") == data.get("id"):
-            u.update(data)
-            save_data()
-            return jsonify(u)
+    updated = _update_entry(users, data.get("id"), data)
+    if updated:
+        return jsonify(updated)
     return jsonify({"error": "not found"}), 404
 
 
 @app.post("/owner/delete")
 def delete_owner():
     data = request.json or {}
-    uid = data.get("id")
-    for u in list(users):
-        if u.get("id") == uid:
-            users.remove(u)
-            save_data()
-            return jsonify({"status": "ok"})
+    if _delete_entry(users, data.get("id")):
+        return jsonify({"status": "ok"})
     return jsonify({"error": "not found"}), 404
 
 
@@ -264,23 +550,17 @@ def get_pets():
 @app.post("/edit_pet")
 def edit_pet():
     data = request.json or {}
-    for p in pets:
-        if p.get("id") == data.get("id"):
-            p.update(data)
-            save_data()
-            return jsonify(p)
+    updated = _update_entry(pets, data.get("id"), data)
+    if updated:
+        return jsonify(updated)
     return jsonify({"error": "not found"}), 404
 
 
 @app.post("/delete_pet")
 def delete_pet():
     data = request.json or {}
-    pet_id = data.get("id")
-    for p in list(pets):
-        if p.get("id") == pet_id:
-            pets.remove(p)
-            save_data()
-            return jsonify({"status": "ok"})
+    if _delete_entry(pets, data.get("id")):
+        return jsonify({"status": "ok"})
     return jsonify({"status": "not_found"}), 404
 
 
@@ -312,23 +592,17 @@ def get_medical(pet_id):
 @app.post("/medical/edit")
 def edit_medical():
     data = request.json or {}
-    for m in medical_history:
-        if m.get("id") == data.get("id"):
-            m.update(data)
-            save_data()
-            return jsonify(m)
+    updated = _update_entry(medical_history, data.get("id"), data)
+    if updated:
+        return jsonify(updated)
     return jsonify({"error": "not found"}), 404
 
 
 @app.post("/medical/delete")
 def delete_medical():
     data = request.json or {}
-    doc_id = data.get("id")
-    for m in list(medical_history):
-        if m.get("id") == doc_id:
-            medical_history.remove(m)
-            save_data()
-            return jsonify({"status": "ok"})
+    if _delete_entry(medical_history, data.get("id")):
+        return jsonify({"status": "ok"})
     return jsonify({"error": "not found"}), 404
 
 
@@ -358,23 +632,17 @@ def get_vaccines(pet_id):
 @app.post("/vaccine/edit")
 def edit_vaccine():
     data = request.json or {}
-    for v in vaccines:
-        if v.get("id") == data.get("id"):
-            v.update(data)
-            save_data()
-            return jsonify(v)
+    updated = _update_entry(vaccines, data.get("id"), data)
+    if updated:
+        return jsonify(updated)
     return jsonify({"error": "not found"}), 404
 
 
 @app.post("/vaccine/delete")
 def delete_vaccine():
     data = request.json or {}
-    doc_id = data.get("id")
-    for v in list(vaccines):
-        if v.get("id") == doc_id:
-            vaccines.remove(v)
-            save_data()
-            return jsonify({"status": "ok"})
+    if _delete_entry(vaccines, data.get("id")):
+        return jsonify({"status": "ok"})
     return jsonify({"error": "not found"}), 404
 
 
@@ -403,23 +671,17 @@ def get_weight(pet_id):
 @app.post("/weight/edit")
 def edit_weight():
     data = request.json or {}
-    for w in weights:
-        if w.get("id") == data.get("id"):
-            w.update(data)
-            save_data()
-            return jsonify(w)
+    updated = _update_entry(weights, data.get("id"), data)
+    if updated:
+        return jsonify(updated)
     return jsonify({"error": "not found"}), 404
 
 
 @app.post("/weight/delete")
 def delete_weight():
     data = request.json or {}
-    doc_id = data.get("id")
-    for w in list(weights):
-        if w.get("id") == doc_id:
-            weights.remove(w)
-            save_data()
-            return jsonify({"status": "ok"})
+    if _delete_entry(weights, data.get("id")):
+        return jsonify({"status": "ok"})
     return jsonify({"error": "not found"}), 404
 
 
@@ -450,23 +712,17 @@ def get_appointment(pet_id):
 @app.post("/appointment/edit")
 def edit_appointment():
     data = request.json or {}
-    for a in appointments:
-        if a.get("id") == data.get("id"):
-            a.update(data)
-            save_data()
-            return jsonify(a)
+    updated = _update_entry(appointments, data.get("id"), data)
+    if updated:
+        return jsonify(updated)
     return jsonify({"error": "not found"}), 404
 
 
 @app.post("/appointment/delete")
 def delete_appointment():
     data = request.json or {}
-    doc_id = data.get("id")
-    for a in list(appointments):
-        if a.get("id") == doc_id:
-            appointments.remove(a)
-            save_data()
-            return jsonify({"status": "ok"})
+    if _delete_entry(appointments, data.get("id")):
+        return jsonify({"status": "ok"})
     return jsonify({"error": "not found"}), 404
 
 
@@ -572,6 +828,205 @@ def ai_diagnose():
     })
 
 
+@app.post("/ai/diagnose_llm")
+def ai_diagnose_llm():
+    """Diagnosis-style answer using a veterinary QA LLM (FLAN-T5 base fine-tune).
+
+    Returns a concise text answer. This is strictly educational — not medical advice.
+    """
+    body = request.json or {}
+    symptoms = (body.get("symptoms") or "").strip()
+    species = (body.get("species") or "").strip()
+    age = body.get("age", None)
+    mode = (body.get("mode") or "").strip().lower()  # 'llm_only' | ''
+    fallback_enabled = os.environ.get("VET_QA_FALLBACK", "1") == "1"
+    if mode == "llm_only":
+        fallback_enabled = False
+
+    if not symptoms:
+        return jsonify({"error": "symptoms is required"}), 400
+
+    pipe = get_vet_llm_pipeline()
+    if pipe is None:
+        return (
+            jsonify(
+                {
+                    "error": "veterinary QA model not available",
+                    "hint": "Install transformers+torch then restart: pip install transformers torch",
+                }
+            ),
+            500,
+        )
+
+    parts = []
+    if species:
+        parts.append(species)
+    if age is not None:
+        parts.append(f"age {age}")
+    parts.append(symptoms)
+    ctx = ", ".join(parts)
+
+    # Heuristic category to steer LLM
+    def _triage_category(txt: str) -> str:
+        t = (txt or "").lower()
+        if any(k in t for k in ["bleed", "blood", "cut", "wound", "lacer", "nail", "claw", "paw", "pad", "limp", "non weight", "not pressing", "holding up"]):
+            return "wound/trauma"
+        if any(k in t for k in ["vomit", "diarr", "stool", "poop", "constipat", "nausea"]):
+            return "gastrointestinal"
+        if any(k in t for k in ["cough", "sneez", "wheeze", "breath", "nasal", "runny nose"]):
+            return "respiratory"
+        if any(k in t for k in ["itch", "rash", "skin", "flea", "hot spot", "wound"]):
+            return "dermatologic"
+        if any(k in t for k in ["seizure", "collapse", "stagger", "head tilt"]):
+            return "neurologic"
+        return "general"
+
+    category = _triage_category(symptoms)
+
+    # LLM-only mode: ask for clean bullet points and return plain answer
+    if mode == "llm_only":
+        # T5-friendly prompt
+        bullet_prompt = (
+            f"The likely medical causes for a {age} year old {species} with {symptoms} are:\n"
+        )
+
+        gen_kwargs = {
+            "max_new_tokens": int(os.environ.get("VET_QA_MAX_TOKENS", 200)),
+            "do_sample": True,
+            "temperature": 0.8,
+            "top_p": 0.95,
+            "repetition_penalty": 1.2,
+            "early_stopping": True,
+        }
+
+        try:
+            out = pipe(bullet_prompt, **gen_kwargs)[0]["generated_text"].strip()
+
+        except Exception as e:
+            return jsonify({"error": f"generation failed: {e}"}), 500
+
+        return jsonify({
+            "answer": out,
+            "source": "llm_fallback",
+            "disclaimer": "Educational only — not a diagnosis. For urgent symptoms (breathing trouble, seizures, collapse, severe pain, continuous vomiting/diarrhea, blood), seek veterinary care immediately.",
+            "model": os.environ.get("VET_QA_MODEL", "ahmed807762/flan-t5-base-veterinaryQA_data-v2"),
+        })
+
+    # Ask for strict JSON to avoid instruction echo and repetition
+    prompt = (
+        "You are a veterinary assistant. Analyze the case and reply with JSON ONLY.\n"
+        f"Case -> species: {species or 'Unknown'}, age: {age if age is not None else 'Unknown'}, symptoms: {symptoms}.\n"
+        f"Category hint: {category}. Prioritize guidance for this category.\n"
+        "Return a JSON object with exactly these keys: \n"
+        "{\n"
+        "  \"conditions\": [ { \"name\": string, \"reason\": string }, { ... }, { ... } ],\n"
+        "  \"red_flags\": [ string, ... ],\n"
+        "  \"care\": [ string, ... ]\n"
+        "}\n"
+        "Constraints:\n"
+        "- Keep reasons specific to the species when possible.\n"
+        "- Educational tone; no medication dosages.\n"
+        "- No extra text, headers, or explanations — JSON ONLY.\n"
+    )
+
+    try:
+        import json as _json
+
+        # Decoding tuned for structured JSON output
+        sampling = os.environ.get("VET_QA_SAMPLING", "0") == "1"
+        gen_kwargs = {
+            "max_new_tokens": int(os.environ.get("VET_QA_MAX_TOKENS", 220)),
+            "no_repeat_ngram_size": int(os.environ.get("VET_QA_NGRAM", 5)),
+            "repetition_penalty": float(os.environ.get("VET_QA_REP", 1.2)),
+            "early_stopping": True,
+        }
+        if sampling:
+            gen_kwargs.update({
+                "do_sample": True,
+                "temperature": float(os.environ.get("VET_QA_TEMP", 0.5)),
+                "top_p": float(os.environ.get("VET_QA_TOP_P", 0.9)),
+                "top_k": int(os.environ.get("VET_QA_TOP_K", 50)),
+            })
+        else:
+            gen_kwargs.update({
+                "do_sample": False,
+                "num_beams": int(os.environ.get("VET_QA_BEAMS", 4)),
+                "length_penalty": float(os.environ.get("VET_QA_LEN_PEN", 1.0)),
+            })
+
+        raw = pipe(prompt, **gen_kwargs)[0]["generated_text"].strip()
+        
+        def _try_parse(s: str):
+            try:
+                return _json.loads(s)
+            except Exception:
+                import re as _re
+                m = _re.search(r"\{[\s\S]*\}", s)
+                if m:
+                    try:
+                        return _json.loads(m.group(0))
+                    except Exception:
+                        return None
+                return None
+
+        js = _try_parse(raw)
+        if js is None:
+            # Fallback: attempt a lighter prompt without schema
+            alt_prompt = (
+                "Vet assistant concise JSON. Case: "
+                f"{ctx}. Keys: conditions(3x{{name,reason}}), red_flags[], care[]."
+            )
+            raw = pipe(alt_prompt, **gen_kwargs)[0]["generated_text"].strip()
+            js = _try_parse(raw)
+        source = "llm"
+        if js is None and fallback_enabled:
+            # Last resort: use rule-based fallback, include raw for debugging
+            fb = _fallback_suggestions(species, age, symptoms)
+            js = {**fb, "raw": raw}
+            source = "fallback"
+        elif js is None:
+            js = {"conditions": [], "red_flags": [], "care": [], "raw": raw}
+            source = "llm"
+    except Exception as e:
+        return jsonify({"error": f"generation failed: {e}"}), 500
+
+    # Normalize result lengths and types
+    def _to_str(x):
+        return str(x).strip()
+
+    conds = js.get("conditions") or []
+    norm_conds = []
+    for c in conds[:3]:
+        if isinstance(c, dict):
+            name = _to_str(c.get("name", "")).strip("- ")
+            reason = _to_str(c.get("reason", ""))
+            if name:
+                norm_conds.append({"name": name, "reason": reason})
+        elif isinstance(c, str) and c.strip():
+            norm_conds.append({"name": c.strip(), "reason": ""})
+
+    red_flags = [ _to_str(x) for x in (js.get("red_flags") or []) if _to_str(x) ]
+    care = [ _to_str(x) for x in (js.get("care") or []) if _to_str(x) ]
+
+    # If everything is empty, optionally construct rule-based suggestions
+    if not norm_conds and not red_flags and not care and fallback_enabled:
+        fb = _fallback_suggestions(species, age, symptoms)
+        norm_conds = fb.get("conditions", [])
+        red_flags = fb.get("red_flags", [])
+        care = fb.get("care", [])
+        source = "fallback"
+
+    return jsonify({
+        "conditions": norm_conds,
+        "red_flags": red_flags[:6],
+        "care": care[:6],
+        "source": source,
+        "raw": js.get("raw", None),
+        "disclaimer": "Educational only — not a diagnosis. For urgent symptoms (breathing trouble, seizures, collapse, severe pain, continuous vomiting/diarrhea, blood), seek veterinary care immediately.",
+        "model": os.environ.get("VET_QA_MODEL", "ahmed807762/flan-t5-base-veterinaryQA_data-v2"),
+    })
+
+
 # Optional aliases (in case you used /api/... in testing)
 @app.route("/api/ai/predict_lifespan", methods=["POST"])
 def api_predict_lifespan():
@@ -584,6 +1039,11 @@ def api_predict_health():
 @app.route("/api/ai/predict_breed_risk", methods=["POST"])
 def api_predict_breed_risk():
     return ai_breed()
+
+
+@app.route("/api/ai/diagnose_llm", methods=["POST"])
+def api_diagnose_llm():
+    return ai_diagnose_llm()
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -2,3 +2,6 @@ flask
 scikit-learn
 numpy
 flask-cors
+transformers
+torch
+sentencepiece
