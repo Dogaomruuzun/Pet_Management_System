@@ -3,15 +3,9 @@ let weightChart = null;
 let petsCache = [];
 let editingPetId = null;
 
-// ===================== NAVIGATION & UI =====================
-
-// (openPage moved to bottom)
-
-// ===================== DROPDOWNS & USERS =====================
+// Navigation
 
 let usersCache = [];
-
-// (loadDropdowns moved to bottom)
 
 function toggleDark() {
     document.body.classList.toggle("dark");
@@ -27,7 +21,7 @@ function showLogin() {
     document.getElementById("loginForm").style.display = "block";
 }
 
-// ===================== AUTH =====================
+// Auth
 
 function checkLogin() {
     const stored = localStorage.getItem("user");
@@ -45,7 +39,7 @@ function register() {
     const name = document.getElementById("regName").value;
     const email = document.getElementById("regEmail").value;
     const password = document.getElementById("regPassword").value;
-    // Role is always 'vet' for public registration
+    // Role: vet
     const role = "vet";
 
     if (!name || !email || !password) {
@@ -104,7 +98,7 @@ function logout() {
     openPage("loginPage");
 }
 
-// ===================== OWNERS (New) =====================
+// Owners
 
 function addOwner() {
     const id = document.getElementById("ownerId").value;
@@ -158,31 +152,31 @@ function loadOwners() {
 }
 
 
-// ===================== GENERIC EDIT/DELETE/SEARCH =====================
+// Edit helpers
 
 let currentEditType = null;
 let currentEditId = null;
 
-// Cache for search filtering
+// Search cache
 let medicalCache = [];
 let vaccineCache = [];
 let weightCache = [];
 let appointmentCache = [];
-// Helper: extract petId from a free-form value like "Name (ID: 123)"
+// Extract pet ID
 function extractIdFromString(val) {
     if (!val) return null;
     const m = String(val).match(/\(\s*ID:\s*(.*?)\s*\)$/i);
     return m ? m[1] : null;
 }
 
-// Search Filter
+// Search
 function searchRecords(type, query) {
     const rawQuery = query || "";
     const qLower = rawQuery.toLowerCase();
     const qId = extractIdFromString(rawQuery);
 
     const doFilter = () => {
-        // Determine an exact pet if possible (by ID or exact name match)
+        // Find exact pet
         let targetPetId = null;
         if (qId) {
             targetPetId = qId;
@@ -191,14 +185,14 @@ function searchRecords(type, query) {
             if (exactPet) targetPetId = exactPet.id;
         }
 
-        // Fallback matcher (broad includes) used only when no exact pet resolved
+        // Broad match
         const isMatchBroad = (item) => {
             const pet = petsCache.find(p => p.id === item.petId);
             const name = pet ? (pet.name || "").toLowerCase() : "";
             return qLower.trim().length === 0 ? true : name.includes(qLower);
         };
 
-        // Exact matcher by targetPetId when resolved
+        // Exact match
         const isMatchExact = (item) => String(item.petId) === String(targetPetId);
 
         if (type === 'medical') {
@@ -215,7 +209,7 @@ function searchRecords(type, query) {
             if (targetPetId) {
                 updateWeightChart(list, [targetPetId]);
             } else {
-                // If no query, chart all; if broad query, chart matched set
+                // Update chart
                 if (qLower.trim().length === 0) {
                     updateWeightChart(weightCache);
                 } else {
@@ -230,26 +224,26 @@ function searchRecords(type, query) {
         }
     };
 
-    // Ensure pets are loaded first
+    // Ensure pets
     if (!petsCache || petsCache.length === 0) {
         ensurePets(() => searchRecords(type, rawQuery));
         return;
     }
 
-    // Load specific data if cache empty
+    // Load cache
     if (type === 'medical' && !medicalCache.length) { loadMedical().then(doFilter); return; }
     if (type === 'vaccines' && !vaccineCache.length) { loadVaccines().then(doFilter); return; }
     if (type === 'weight' && !weightCache.length) { loadWeight().then(doFilter); return; }
     if (type === 'appointments' && !appointmentCache.length) { loadAppointments().then(doFilter); return; }
 
-    // If cache exists, filter immediately
+    // Filter now
     doFilter();
 }
 
 function deleteRecord(type, id) {
     if (!confirm("Are you sure?")) return;
 
-    // Map type to endpoint
+    // Endpoint
     let endpoint = "";
     if (type === 'owner') endpoint = "/owner/delete";
     if (type === 'medical') endpoint = "/medical/delete";
@@ -264,7 +258,7 @@ function deleteRecord(type, id) {
     })
         .then(r => r.json())
         .then(() => {
-            // Reload page data
+            // Reload
             if (type === 'owner') loadOwners();
             if (type === 'medical') loadMedical();
             if (type === 'vaccine') loadVaccines();
@@ -278,15 +272,12 @@ function openEditRecordModal(type, id) {
     currentEditId = id;
 
     const container = document.getElementById("recordModalContent");
-    container.innerHTML = ""; // Clear previous
+    container.innerHTML = ""; // Clear
 
-    // Find the data object
+    // Find item
     let item = null;
     if (type === 'owner') {
-        // Need to fetch from users logic or cache. simplified: fetch all users again or use usersCache from loadDropdowns
-        // Let's assume usersCache is fresh enough or fetch fresh
-        // For simplicity, we restart loadDropdowns() often so usersCache -> global?
-        // reusing loadDropdowns logic:
+        // Fetch owners
         fetch("http://127.0.0.1:5000/users").then(r => r.json()).then(users => {
             item = users.find(u => u.id === id);
             if (item) {
@@ -388,33 +379,153 @@ function closeModal(id) {
     document.getElementById(id).style.display = "none";
 }
 
-/* ===================== DASHBOARD ===================== */
+// Dashboard
+
+function getDashboardChartTheme(labelCount) {
+    const styles = getComputedStyle(document.body);
+    const palette = [
+        styles.getPropertyValue("--chart-1").trim(),
+        styles.getPropertyValue("--chart-2").trim(),
+        styles.getPropertyValue("--chart-3").trim(),
+        styles.getPropertyValue("--chart-4").trim(),
+        styles.getPropertyValue("--chart-5").trim(),
+        styles.getPropertyValue("--chart-6").trim()
+    ].filter(Boolean);
+
+    const colors = [];
+    for (let i = 0; i < labelCount; i++) {
+        colors.push(palette[i % palette.length] || "#4cd137");
+    }
+
+    return {
+        colors,
+        textColor: styles.getPropertyValue("--text").trim() || "#2f3640",
+        mutedColor: styles.getPropertyValue("--chart-muted").trim() || "#5f6b7a",
+        cardColor: styles.getPropertyValue("--card").trim() || "#ffffff",
+        borderColor: styles.getPropertyValue("--border").trim() || "rgba(0,0,0,0.08)",
+        ringColor: styles.getPropertyValue("--bg").trim() || "#f5f6fa"
+    };
+}
 
 function updateDashboard() {
-    // Pets count
     fetch("http://127.0.0.1:5000/pets")
         .then(r => r.json())
         .then(data => {
             document.getElementById("dashPets").textContent = data.length;
 
-            // Chart
             const types = {};
             data.forEach(p => types[p.type] = (types[p.type] || 0) + 1);
             const ctx = document.getElementById("chartPetTypes");
+            const labels = Object.keys(types);
+            const values = Object.values(types);
+            const total = values.reduce((sum, v) => sum + v, 0);
+            const theme = getDashboardChartTheme(labels.length);
             const existingChart = Chart.getChart(ctx);
             if (existingChart) existingChart.destroy();
             new Chart(ctx, {
-                type: "pie",
+                type: "doughnut",
                 data: {
-                    labels: Object.keys(types),
+                    labels,
                     datasets: [{
-                        data: Object.values(types),
-                        backgroundColor: ["#4cd137", "#0097e6", "#e84118", "#fbc531"]
+                        data: values,
+                        backgroundColor: theme.colors,
+                        borderColor: theme.ringColor,
+                        borderWidth: 2,
+                        hoverOffset: 8,
+                        borderRadius: 6,
+                        spacing: 2
                     }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: "62%",
+                    radius: "90%",
+                    layout: {
+                        padding: 8
+                    },
+                    plugins: {
+                        legend: {
+                            position: "bottom",
+                            align: "start",
+                            labels: {
+                                color: theme.mutedColor,
+                                usePointStyle: true,
+                                pointStyle: "circle",
+                                boxWidth: 8,
+                                boxHeight: 8,
+                                padding: 16,
+                                font: {
+                                    size: 12,
+                                    weight: "600"
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: theme.cardColor,
+                            borderColor: theme.borderColor,
+                            borderWidth: 1,
+                            titleColor: theme.textColor,
+                            bodyColor: theme.textColor,
+                            displayColors: false,
+                            padding: 10,
+                            callbacks: {
+                                label: function (context) {
+                                    const label = context.label || "Unknown";
+                                    const value = context.parsed || 0;
+                                    const pct = total ? Math.round((value / total) * 100) : 0;
+                                    return `${label}: ${value} (${pct}%)`;
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 900,
+                        easing: "easeOutQuart"
+                    }
                 }
             });
 
-            // Now fetch other stats utilizing the pet IDs
+            const listEl = document.getElementById("chartPetTypesList");
+            if (listEl) {
+                listEl.innerHTML = "";
+                if (labels.length === 0) {
+                    const empty = document.createElement("div");
+                    empty.className = "chart-side-item";
+                    empty.textContent = "No pets yet";
+                    listEl.appendChild(empty);
+                } else {
+                    labels.forEach((label, index) => {
+                        const item = document.createElement("div");
+                        item.className = "chart-side-item";
+
+                        const left = document.createElement("div");
+                        left.className = "chart-side-label";
+
+                        const dot = document.createElement("span");
+                        dot.className = "chart-dot";
+                        dot.style.backgroundColor = theme.colors[index];
+
+                        const labelText = document.createElement("span");
+                        labelText.textContent = label || "Unknown";
+
+                        left.appendChild(dot);
+                        left.appendChild(labelText);
+
+                        const value = values[index] || 0;
+                        const pct = total ? Math.round((value / total) * 100) : 0;
+                        const right = document.createElement("div");
+                        right.className = "chart-side-value";
+                        right.textContent = `${value} (${pct}%)`;
+
+                        item.appendChild(left);
+                        item.appendChild(right);
+                        listEl.appendChild(item);
+                    });
+                }
+            }
+
+            // Fetch stats
             fetchStats(data);
         });
 }
@@ -449,7 +560,7 @@ function fetchStats(pets) {
 }
 
 
-/* ===================== HELPERS ===================== */
+// Helpers
 
 function populatePetDatalists(pets, users) {
     const getOwnerName = (id) => {
@@ -457,7 +568,7 @@ function populatePetDatalists(pets, users) {
         return u ? u.name : "Unknown Owner";
     };
 
-    // Populate global pets datalists
+    // Build pet lists
     const dl = document.getElementById("allPetsList");
     const searchDl = document.getElementById("petSearchList");
 
@@ -478,22 +589,20 @@ function resolveIdFromInput(inputId) {
 }
 
 
-/* ===================== PETS ===================== */
-
-// Initialize dropdowns and other initial data
+// Pets
 
 function loadDropdowns() {
     fetch("http://127.0.0.1:5000/users").then(r => r.json()).then(users => {
         usersCache = users;
 
-        // Populate Owners Datalist
+        // Owner list
         const ownerDl = document.getElementById("ownersList");
         if (ownerDl) {
             const owners = users.filter(u => u.role === 'owner');
             ownerDl.innerHTML = owners.map(o => `<option value="${o.name} (ID: ${o.id})">${o.phone || ''}</option>`).join("");
         }
 
-        // Populate Vets Dropdown
+        // Vet list
         const sel = document.getElementById("aVet");
         if (sel) {
             sel.innerHTML = '<option value="">-- Select Vet --</option>';
@@ -503,14 +612,14 @@ function loadDropdowns() {
             });
         }
 
-        // Refresh Pet Datalists if pets are loaded (to ensure owner names resolve)
+        // Update pet list
         if (petsCache && petsCache.length > 0) {
             populatePetDatalists(petsCache, usersCache);
         }
     });
 }
 
-// Ensure loadDropdowns is called when opening pages
+// Load on open
 function openPage(pageId) {
     document.querySelectorAll(".page").forEach(p => {
         p.classList.remove("active");
@@ -527,7 +636,7 @@ function openPage(pageId) {
         }
     }
 
-    // Refresh data based on page
+    // Page refresh
     loadDropdowns();
 
     if (pageId === 'dashboard') updateDashboard();
@@ -539,7 +648,7 @@ function openPage(pageId) {
     if (pageId === 'appointments') loadAppointments();
 }
 
-// ===================== AI: LLM Symptom Assistant =====================
+// LLM assistant
 
 async function aiDiagnoseLLM() {
     const species = document.getElementById('llmSpecies').value || '';
@@ -574,7 +683,7 @@ async function aiDiagnoseLLM() {
         if (!res.ok) {
             throw new Error(data?.error || 'Request failed');
         }
-        // Prefer structured JSON if present
+        // Prefer structured
         const hasConds = Array.isArray(data.conditions) && data.conditions.length > 0;
         const hasFlags = Array.isArray(data.red_flags) && data.red_flags.length > 0;
         const hasCare  = Array.isArray(data.care) && data.care.length > 0;
@@ -599,7 +708,7 @@ async function aiDiagnoseLLM() {
             }
             out.textContent = lines.join('\n');
         } else {
-            // Show raw/answer text if structured items are empty
+            // Use raw text
             out.textContent = data.answer || data.raw || '(No answer)';
         }
         disc.textContent = data.disclaimer || '';
@@ -614,7 +723,7 @@ async function aiDiagnoseLLM() {
     }
 }
 
-// File upload preview
+// Photo upload
 const petPhotoFile = document.getElementById("petPhotoFile");
 if (petPhotoFile) {
     petPhotoFile.addEventListener("change", function () {
@@ -673,7 +782,6 @@ function addPet() {
         .then(() => {
             loadPets();
             clearPetForm();
-            // Stay on page or refresh list
         });
 }
 
@@ -754,7 +862,7 @@ function savePetEdit() {
         });
 }
 
-// ===================== MODULE RENDERERS =====================
+// Renderers
 
 function ensurePets(callback) {
     if (petsCache && petsCache.length > 0) {
@@ -852,7 +960,7 @@ function loadWeight() {
 function renderWeight(list) {
     const container = document.getElementById("weightList");
     container.innerHTML = "";
-    // sort by date desc make copy to not affect cache order?
+    // Sort list
     const sorted = [...list].sort((a, b) => new Date(b.date) - new Date(a.date));
 
     sorted.forEach(w => {
@@ -903,14 +1011,13 @@ function renderAppointments(list) {
     });
 }
 
-// Chart Logic Updated
+// Weight chart
 let weightChartInstance = null;
 
 function updateWeightChart(data, filterPetIds = null) {
     const ctx = document.getElementById("weightChart").getContext("2d");
 
-    // Group by pet
-    // If filterPetIds is set, only use those
+    // Filter pets
     const petsData = {};
 
     data.forEach(d => {
@@ -922,7 +1029,7 @@ function updateWeightChart(data, filterPetIds = null) {
 
     const datasets = Object.keys(petsData).map(petId => {
         const pet = petsCache.find(p => p.id === petId);
-        // sort by date
+        // Sort dates
         petsData[petId].sort((a, b) => new Date(a.x) - new Date(b.x));
         return {
             label: pet ? pet.name : "Unknown",
@@ -932,10 +1039,10 @@ function updateWeightChart(data, filterPetIds = null) {
         };
     });
 
-    // Simplification: Creating unique sorted labels (dates)
+    // Dates list
     const allDates = [...new Set(data.filter(d => !filterPetIds || filterPetIds.includes(d.petId)).map(d => d.date))].sort();
 
-    // Re-map data to align with allDates (insert nulls if missing)
+    // Align data
     const finalDatasets = datasets.map(ds => {
         const petId = Object.keys(petsData).find(key => {
             const pet = petsCache.find(p => p.id === key);
@@ -970,7 +1077,7 @@ function getRandomColor() {
     return color;
 }
 
-/* ===================== MEDICAL HISTORY ===================== */
+// Medical
 
 function addMedical() {
     const petId = resolveIdFromInput("medPetName");
@@ -993,7 +1100,7 @@ function addMedical() {
         .then(r => r.json())
         .then(() => {
             loadMedical();
-            // Clear form
+            // Reset form
             document.getElementById("medDiag").value = "";
             document.getElementById("medTreat").value = "";
             document.getElementById("medNotes").value = "";
@@ -1001,7 +1108,7 @@ function addMedical() {
         });
 }
 
-/* ===================== VACCINES ===================== */
+// Vaccines
 
 function addVaccine() {
     const petId = resolveIdFromInput("vacPetName");
@@ -1026,7 +1133,7 @@ function addVaccine() {
         });
 }
 
-/* ===================== WEIGHT TRACKING ===================== */
+// Weight
 
 function addWeight() {
     const petId = resolveIdFromInput("wPetName");
@@ -1046,9 +1153,7 @@ function addWeight() {
         .then(() => loadWeight());
 }
 
-// (Removed duplicate legacy loadWeight; using the cached version above)
-
-/* ===================== APPOINTMENTS ===================== */
+// Appointments
 
 function addAppointment() {
     const petId = resolveIdFromInput("aPetName");
@@ -1070,9 +1175,7 @@ function addAppointment() {
         .then(() => loadAppointments());
 }
 
-// (Removed duplicate legacy loadAppointments; using the cached version above)
-
-/* ===================== OWNER INFO ===================== */
+// Owner info
 
 function getOwnerPets() {
     const val = document.getElementById("ownerSearch").value;
@@ -1091,43 +1194,6 @@ function getOwnerPets() {
                 </div>`;
             });
         });
-}
-
-/* ===================== AI MODELS ===================== */
-
-function aiLifespan() {
-    fetch("http://127.0.0.1:5000/ai/lifespan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ age: Number(document.getElementById("aiAge").value) })
-    })
-        .then(r => r.json())
-        .then(res => document.getElementById("aiLifeResult").textContent = res.prediction);
-}
-
-function aiHealth() {
-    fetch("http://127.0.0.1:5000/ai/health_score", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            age: Number(document.getElementById("aiHSAge").value),
-            weight: Number(document.getElementById("aiHSWeight").value)
-        })
-    })
-        .then(r => r.json())
-        .then(res => document.getElementById("aiHealthResult").textContent = res.prediction);
-}
-
-function aiBreed() {
-    fetch("http://127.0.0.1:5000/ai/breed_risk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            age: Number(document.getElementById("aiBreedAge").value)
-        })
-    })
-        .then(r => r.json())
-        .then(res => document.getElementById("aiBreedResult").textContent = res.prediction);
 }
 
 function openPetDetail(id) {
@@ -1204,7 +1270,7 @@ function loadPetDetailSections(id) {
 }
 
 
-/* ===================== INITIAL ===================== */
+// Init
 
 window.onload = () => {
     checkLogin();

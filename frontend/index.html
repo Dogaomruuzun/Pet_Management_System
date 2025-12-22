@@ -53,8 +53,8 @@
 
 <body class="light">
 
-    <!-- SIDEBAR -->
-    <aside id="sidebar" style="display:none;"> <!-- Hidden by default until logged in -->
+    <!-- Sidebar -->
+    <aside id="sidebar" style="display:none;"> <!-- Hidden until login -->
         <h2>🐾 Vet Panel</h2>
         <ul>
             <li onclick="openPage('dashboard')">Dashboard</li>
@@ -73,10 +73,10 @@
         </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
+    <!-- Main -->
     <main>
 
-        <!-- LOGIN / REGISTER PAGE -->
+        <!-- Login -->
         <section id="loginPage" class="page active login-page">
             <div id="loginForm" class="card login-card">
                 <h1>Login</h1>
@@ -92,13 +92,13 @@
                 <input id="regName" placeholder="Full Name" class="w-full mb-2">
                 <input id="regEmail" placeholder="Email" class="w-full mb-2">
                 <input id="regPassword" type="password" placeholder="Password" class="w-full mb-2">
-                <!-- Role selector removed, defaults to vet -->
+                <!-- Role: vet -->
                 <button onclick="register()" class="w-full">Sign Up</button>
                 <p class="mt-2">Already have an account? <a href="#" onclick="showLogin()">Login</a></p>
             </div>
         </section>
 
-        <!-- DASHBOARD -->
+        <!-- Dashboard -->
         <section id="dashboard" class="page">
             <h1>Dashboard</h1>
 
@@ -119,13 +119,19 @@
 
             <div class="card">
                 <h3>Pet Type Distribution</h3>
-                <div class="chart-container">
-                    <canvas id="chartPetTypes"></canvas>
+                <div class="chart-split">
+                    <div class="chart-container">
+                        <canvas id="chartPetTypes"></canvas>
+                    </div>
+                    <div class="chart-side">
+                        <div class="chart-side-title">Species Summary</div>
+                        <div id="chartPetTypesList" class="chart-side-list"></div>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- PETS PAGE -->
+        <!-- Pets -->
         <section id="pets" class="page">
             <h1>Pets</h1>
 
@@ -135,12 +141,12 @@
                 <input id="petAge" type="number" placeholder="Age">
                 <input id="petType" placeholder="Type (Dog, Cat...)">
                 <input id="petOwnerName" placeholder="Search Owner Name..." list="ownersList">
-                <input type="hidden" id="petOwner"> <!-- Hidden to store actual ID -->
+                <input type="hidden" id="petOwner"> <!-- Owner ID -->
 
                 <label>Pet Photo:</label>
                 <input type="file" id="petPhotoFile" class="file-upload-wrapper">
                 <img id="petPhotoPreview" style="display:none; width: 100px; margin-top: 10px; border-radius: 6px;">
-                <input id="petPhoto" type="hidden"> <!-- Stores URL after upload -->
+                <input id="petPhoto" type="hidden"> <!-- Photo URL -->
 
                 <button onclick="addPet()">Add Pet</button>
             </div>
@@ -148,7 +154,7 @@
             <div id="petList" class="grid"></div>
         </section>
 
-        <!-- MEDICAL HISTORY -->
+        <!-- Medical -->
         <section id="medical" class="page">
             <h1>Medical History</h1>
 
@@ -177,7 +183,7 @@
             <div id="medicalList"></div>
         </section>
 
-        <!-- VACCINATIONS -->
+        <!-- Vaccines -->
         <section id="vaccines" class="page">
             <h1>Vaccinations</h1>
 
@@ -207,7 +213,7 @@
             <div id="vaccineList"></div>
         </section>
 
-        <!-- WEIGHT TRACKING -->
+        <!-- Weight -->
         <section id="weight" class="page">
             <h1>Weight Tracking</h1>
 
@@ -241,7 +247,7 @@
             <div id="weightList"></div>
         </section>
 
-        <!-- APPOINTMENTS -->
+        <!-- Appointments -->
         <section id="appointments" class="page">
             <h1>Appointments</h1>
 
@@ -276,7 +282,7 @@
             <div id="appointmentList"></div>
         </section>
 
-        <!-- OWNERS (New Page) -->
+        <!-- Owners -->
         <section id="owner" class="page">
             <h1>Manage Owners</h1>
 
@@ -293,36 +299,14 @@
             <div id="ownerList" class="grid-3"></div>
         </section>
 
-        <!-- DATALISTS -->
-        <datalist id="petSearchList"></datalist> <!-- Keeps existng search logic -->
+        <!-- Datalists -->
+        <datalist id="petSearchList"></datalist> <!-- Search list -->
         <datalist id="allPetsList"></datalist>
         <datalist id="ownersList"></datalist>
 
-        <!-- AI ASSISTANT -->
+        <!-- AI -->
         <section id="ai" class="page">
             <h1>AI Assistant</h1>
-
-            <div class="card">
-                <h2>Lifespan Prediction</h2>
-                <input id="aiAge" type="number" placeholder="Age">
-                <button onclick="aiLifespan()">Predict</button>
-                <p id="aiLifeResult"></p>
-            </div>
-
-            <div class="card">
-                <h2>Health Score</h2>
-                <input id="aiHSWeight" type="number" placeholder="Weight">
-                <input id="aiHSAge" type="number" placeholder="Age">
-                <button onclick="aiHealth()">Predict</button>
-                <p id="aiHealthResult"></p>
-            </div>
-
-            <div class="card">
-                <h2>Breed Risk</h2>
-                <input id="aiBreedAge" type="number" placeholder="Age">
-                <button onclick="aiBreed()">Predict</button>
-                <p id="aiBreedResult"></p>
-            </div>
 
             <div class="card">
                 <h2>LLM Symptom Assistant</h2>
@@ -350,14 +334,14 @@
             <div id="petDetailContent"></div>
         </section>
 
-        <!-- EDIT PET MODAL (Existing) -->
+        <!-- Edit modal -->
         <div id="editModal" class="modal">
             <div class="modal-content">
                 <h2>Edit Pet</h2>
                 <input id="editName" placeholder="Name">
                 <input id="editAge" type="number" placeholder="Age">
                 <input id="editType" placeholder="Type">
-                <!-- Hidden or View Only photo for now in simple edit -->
+                <!-- Photo URL -->
                 <input id="editPhoto" placeholder="Photo URL">
 
                 <div class="modal-actions">
@@ -367,7 +351,7 @@
             </div>
         </div>
 
-        <!-- GENERIC RECORD EDIT MODAL -->
+        <!-- Record modal -->
         <div id="recordModal" class="modal">
             <div class="modal-content">
                 <h2>Edit Record</h2>

@@ -1,4 +1,4 @@
-/* RESET */
+/* Reset */
 * {
     margin: 0;
     padding: 0;
@@ -14,6 +14,13 @@ body.light {
     --sidebarText: white;
     --input: #f0f0f0;
     --border: #dcdde1;
+    --chart-1: #2a9d8f;
+    --chart-2: #e9c46a;
+    --chart-3: #f4a261;
+    --chart-4: #e76f51;
+    --chart-5: #577590;
+    --chart-6: #90be6d;
+    --chart-muted: #5f6b7a;
 }
 
 body.dark {
@@ -24,6 +31,13 @@ body.dark {
     --sidebarText: white;
     --input: #3d3d3d;
     --border: #444;
+    --chart-1: #2ec4b6;
+    --chart-2: #ffd166;
+    --chart-3: #f8961e;
+    --chart-4: #ef476f;
+    --chart-5: #4cc9f0;
+    --chart-6: #7bd389;
+    --chart-muted: #d7dde5;
 }
 
 body {
@@ -32,7 +46,7 @@ body {
     display: flex;
 }
 
-/* SIDEBAR */
+/* Sidebar */
 #sidebar {
     width: 240px;
     min-height: 100vh;
@@ -82,14 +96,14 @@ body {
     background: #192a56;
 }
 
-/* MAIN AREA */
+/* Main */
 main {
     margin-left: 260px;
     padding: 30px;
     width: calc(100% - 260px);
 }
 
-/* PAGE SECTION */
+/* Pages */
 .page {
     display: none;
 }
@@ -103,7 +117,7 @@ h1 {
     margin-bottom: 25px;
 }
 
-/* CARD */
+/* Card */
 .card {
     background: var(--card);
     padding: 20px;
@@ -118,7 +132,7 @@ h1 {
     margin-bottom: 12px;
 }
 
-/* INPUT & BUTTON */
+/* Forms */
 input,
 select,
 textarea {
@@ -129,6 +143,30 @@ textarea {
     border: 1px solid var(--border);
     background: var(--input);
     color: var(--text);
+}
+
+#llmMode,
+#llmMode option {
+    color: var(--text);
+    font-family: "Segoe UI", sans-serif !important;
+    font-size: 12px;
+    letter-spacing: normal;
+    -webkit-text-security: none !important;
+    text-security: none !important;
+    text-shadow: none;
+    appearance: menulist;
+    -webkit-appearance: menulist;
+    -moz-appearance: menulist;
+}
+
+#llmMode {
+    height: auto !important;
+    padding: 6px 10px;
+    line-height: 1.2;
+}
+
+#llmMode option {
+    line-height: 1.2;
 }
 
 button {
@@ -147,7 +185,7 @@ button:hover {
     background: #44bd32;
 }
 
-/* GRID */
+/* Grid */
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -160,7 +198,7 @@ button:hover {
     gap: 20px;
 }
 
-/* PET CARD */
+/* Pet card */
 .pet-card {
     background: var(--card);
     border-radius: 12px;
@@ -184,7 +222,7 @@ button:hover {
     font-size: 14px;
 }
 
-/* LIST CONTAINERS */
+/* Lists */
 #medicalList div,
 #vaccineList div,
 #appointmentList div,
@@ -196,8 +234,7 @@ button:hover {
     border: 1px solid var(--border);
 }
 
-/* CHART */
-/* CHART */
+/* Chart */
 canvas {
     width: 100% !important;
     height: 300px !important;
@@ -209,7 +246,7 @@ canvas {
     width: 100%;
 }
 
-/* CARDS DASHBOARD ALTERATIONS */
+/* Dashboard cards */
 #dashboard .card {
     transition: transform 0.2s;
 }
@@ -218,7 +255,7 @@ canvas {
     transform: translateY(-2px);
 }
 
-/* FILE INPUT */
+/* File input */
 .file-upload-wrapper {
     border: 2px dashed var(--border);
     padding: 20px;
@@ -233,7 +270,7 @@ canvas {
     background: rgba(0, 0, 0, 0.05);
 }
 
-/* SEARCH INPUTS */
+/* Search */
 input[type="text"][id$="Search"] {
     width: 100%;
     padding: 12px;
@@ -245,7 +282,7 @@ input[type="text"][id$="Search"] {
     font-size: 16px;
 }
 
-/* RECORD LIST ITEMS */
+/* Records */
 .record-item {
     background: var(--card);
     border: 1px solid var(--border);
@@ -267,7 +304,7 @@ input[type="text"][id$="Search"] {
     margin-left: 20px;
 }
 
-/* MODAL */
+/* Modal */
 .modal {
     display: none;
     position: fixed;
@@ -302,7 +339,7 @@ input[type="text"][id$="Search"] {
     background: #c23616;
 }
 
-/* LOGIN PAGE */
+/* Login */
 #loginPage {
     max-width: 420px;
     margin: auto;
@@ -314,7 +351,7 @@ input[type="text"][id$="Search"] {
     margin-bottom: 25px;
 }
 
-/* RESPONSIVE LAYOUT */
+/* Responsive */
 @media (max-width: 900px) {
     #sidebar {
         width: 200px;
@@ -373,4 +410,80 @@ input[type="text"][id$="Search"] {
     position: relative;
     height: 400px;
     width: 100%;
+}
+
+#dashboard .chart-container {
+    max-width: 700px;
+    height: 360px;
+}
+
+#dashboard #chartPetTypes {
+    height: 360px !important;
+}
+
+.chart-split {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.chart-side {
+    min-width: 180px;
+    flex: 1;
+    max-width: 260px;
+}
+
+.chart-side-title {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--chart-muted);
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.chart-side-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chart-side-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card);
+    font-size: 14px;
+}
+
+.chart-side-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.chart-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.chart-side-value {
+    color: var(--chart-muted);
+    font-weight: 600;
+}
+
+@media (max-width: 900px) {
+    .chart-side {
+        max-width: 100%;
+    }
 }
