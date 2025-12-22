@@ -12,7 +12,7 @@ def connect(db_path: Optional[str] = None) -> sqlite3.Connection:
     path = db_path or DB_FILE
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
-    # Ensure FK is on for this connection
+    # FK on
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
@@ -68,11 +68,11 @@ def replace_all(data: Dict[str, List[Dict[str, Any]]], conn: Optional[sqlite3.Co
     cur = conn.cursor()
     cur.execute("PRAGMA foreign_keys = ON;")
 
-    # Clear child tables first, then parents
+    # Clear children
     for table in ["appointments", "weights", "vaccines", "medical_history", "pets", "users"]:
         cur.execute(f"DELETE FROM {table}")
 
-    # Insert parents then children
+    # Insert order
     def ensure_keys(rows: List[Dict[str, Any]], keys: List[str]) -> List[Dict[str, Any]]:
         safe: List[Dict[str, Any]] = []
         for r in rows:

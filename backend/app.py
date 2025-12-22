@@ -3,7 +3,7 @@ import pickle, uuid, json, os
 from flask_cors import CORS
 
 
-# -------------------- PATHS --------------------
+# Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 import sys
 if BASE_DIR not in sys.path:
@@ -14,7 +14,7 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 MODEL_DIR = os.path.join(BASE_DIR, "model")
 FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
 
-# Serve the front-end from Flask (so you can open http://127.0.0.1:5000/)
+# Frontend
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
 app.secret_key = "dev-secret-key"
 CORS(app, supports_credentials=True)
@@ -23,7 +23,7 @@ CORS(app, supports_credentials=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# -------------------- IN-MEMORY STORAGE --------------------
+# Cache
 users = []
 pets = []
 medical_history = []
@@ -36,11 +36,11 @@ def load_data():
     """Populate in-memory lists from SQLite (and migrate from data.json if present)."""
     global users, pets, medical_history, vaccines, weights, appointments
     try:
-        # Ensure DB and schema exist
+        # Init DB
         db_init()
 
         data = db_fetch_all()
-        # If DB is empty but a legacy JSON file exists, migrate it
+        # Migrate JSON
         if not any(data.values()) and os.path.exists(DATA_FILE):
             try:
                 with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -61,7 +61,7 @@ def load_data():
         appointments = data.get("appointments", [])
     except Exception as e:
         print(f"Error initializing/loading DB: {e}")
-        # Fallback to legacy JSON only if DB access fails entirely
+        # JSON fallback
         if os.path.exists(DATA_FILE):
             try:
                 with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -88,13 +88,13 @@ def save_data():
         "weights": weights,
         "appointments": appointments,
     }
-    # Persist to SQLite
+    # Save DB
     try:
         db_init()
         db_replace_all(data)
     except Exception as e:
         print(f"Error saving to DB: {e}")
-    # Keep writing legacy JSON as a backup for now
+    # Save JSON
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
@@ -104,7 +104,7 @@ def save_data():
 
 load_data()
 
-# -------------------- LOAD AI MODELS --------------------
+# Models
 
 def _load_model(path: str):
     if not os.path.exists(path):
@@ -117,16 +117,11 @@ def _load_model(path: str):
         return None
 
 
-lifespan_model = _load_model(os.path.join(MODEL_DIR, "lifespan_model.pkl"))
-health_model = _load_model(os.path.join(MODEL_DIR, "health_model.pkl"))
-breed_model = _load_model(os.path.join(MODEL_DIR, "breed_model.pkl"))
-
-
 diagnose_vectorizer = _load_model(os.path.join(MODEL_DIR, "diagnose_vectorizer.pkl"))
 diagnose_model = _load_model(os.path.join(MODEL_DIR, "diagnose_model.pkl"))
 
 
-# -------------------- LLM (FLAN-T5 veterinary QA) --------------------
+# LLM
 _vet_llm_pipe = None
 _vet_llm_device = "cpu"
 import threading
@@ -148,7 +143,7 @@ def get_vet_llm_pipeline():
                 "VET_QA_MODEL", "ahmed807762/flan-t5-base-veterinaryQA_data-v2"
             )
 
-            # Force CPU unless explicitly overridden
+            # Force CPU
             device = "cuda" if (hasattr(torch, "cuda") and torch.cuda.is_available()) else "cpu"
             if os.environ.get("VET_QA_FORCE_CPU", "1") == "1":
                 device = "cpu"
@@ -173,7 +168,7 @@ def get_vet_llm_pipeline():
             mdl = _load_model()
             mdl.eval()
 
-            # pipeline device: -1 for CPU, GPU index for CUDA
+            # Pipeline device
             device_arg = -1 if device == "cpu" else 0
             _pipe = pipeline(
                 "text2text-generation",
@@ -185,7 +180,7 @@ def get_vet_llm_pipeline():
             print(f"Device set to use {device}")
             print(f"Loaded veterinary QA model: {model_name}")
 
-            # Save globals
+            # Cache
             global _vet_llm_device
             _vet_llm_device = device
             _vet_llm_pipe = _pipe
@@ -196,7 +191,7 @@ def get_vet_llm_pipeline():
             return None
 
 
-# Optional: warm-up the LLM in background so first request is faster
+# LLM warmup
 def _warmup_llm_async():
     try:
         import threading
@@ -218,7 +213,7 @@ def _warmup_llm_async():
 _warmup_llm_async()
 
 
-# -------------------- Rule-based fallback for suggestions --------------------
+# Fallback rules
 
 def _species_group(name: str) -> str:
     s = (name or "").strip().lower()
@@ -247,13 +242,13 @@ def _fallback_suggestions(species: str, age, symptoms: str):
         if len(conds) < 3:
             conds.append({"name": name, "reason": reason})
 
-    # Common flags from symptoms
+    # Symptom flags
     lethargy = "letharg" in text or "tired" in text
     anorexia = "no appetite" in text or "not eating" in text or "reduced appetite" in text or "anorex" in text
     gi = any(k in text for k in ["vomit", "diarr", "stool", "poop", "constipat"])  # GI signs
     resp = any(k in text for k in ["cough", "sneez", "wheeze", "breath", "runny nose", "nasal"])  # respiratory
     pain = any(k in text for k in ["pain", "aggress", "hunch", "limp", "sore", "guard"])  # pain/behaviour
-    # External wound/lameness keywords
+    # Wound keywords
     bleeding = any(k in text for k in ["bleed", "blood"]) and any(k in text for k in ["paw", "pad", "nail", "claw", "dewclaw", "toe", "foot", "leg"])
     paw_wound = any(k in text for k in ["paw", "pad", "nail", "claw", "dewclaw", "toe"]) and any(k in text for k in ["cut", "wound", "tear", "lacer", "broken", "rip"])
     lameness = any(k in text for k in ["limp", "non weight", "non-weight", "not weight", "not pressing", "holding up", "favoring", "not putting weight"]) or ("not pressing" in text)
@@ -281,7 +276,7 @@ def _fallback_suggestions(species: str, age, symptoms: str):
             "Arrange prompt exam — small mammals decline quickly",
         ]
     elif grp == "dogcat":
-        # Prioritize external injuries when present
+        # Prioritize injuries
         if bleeding or paw_wound or lameness:
             add_cond("Torn/broken nail (quick injury)", "Bleeding from nail with reluctance to bear weight is typical")
             add_cond("Paw pad laceration or foreign body", "Blood on paw/pads; glass/thorns cause pain and non‑weight bearing")
@@ -383,7 +378,7 @@ def generate_id():
     return str(uuid.uuid4())
 
 
-# -------------------- FRONTEND --------------------
+# Routes
 
 
 
@@ -396,7 +391,7 @@ def root():
 
 
 
-# -------------------- AUTH --------------------
+# Auth
 @app.post("/register")
 def register():
     data = request.json or {}
@@ -423,7 +418,7 @@ def register():
     users.append(user)
     save_data()
 
-    # login after register
+    # Auto login
     session["user_id"] = user["id"]
 
     return jsonify({"status": "ok", "user": user})
@@ -438,7 +433,7 @@ def login():
 
     for u in users:
         if u.get("email") == email and u.get("password") == password:
-            session["user_id"] = u["id"]   # <-- sadece doğruysa burada set
+            session["user_id"] = u["id"]   # valid login
             return jsonify({"status": "ok", "user": u})
 
     return jsonify({"status": "error", "message": "Invalid credentials"}), 401
@@ -457,7 +452,7 @@ def me():
     return jsonify({"user_id": session.get("user_id")})
 
 
-# -------------------- OWNERS (Vet Managed) --------------------
+# Owners
 
 @app.post("/owner/add")
 def add_owner():
@@ -496,7 +491,7 @@ def delete_owner():
     return jsonify({"error": "not found"}), 404
 
 
-# -------------------- UPLOADS --------------------
+# Uploads
 
 @app.get("/uploads/<filename>")
 def uploaded_file(filename):
@@ -516,12 +511,12 @@ def upload_file():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
     file.save(filepath)
 
-    # For local dev; if you deploy, change host accordingly.
+    # Local dev URL
     url = f"http://127.0.0.1:5000/uploads/{filename}"
     return jsonify({"url": url})
 
 
-# -------------------- PETS --------------------
+# Pets
 
 @app.post("/add_pet")
 def add_pet():
@@ -564,7 +559,7 @@ def delete_pet():
     return jsonify({"status": "not_found"}), 404
 
 
-# -------------------- MEDICAL HISTORY --------------------
+# Medical
 
 @app.post("/medical/add")
 def add_medical():
@@ -606,7 +601,7 @@ def delete_medical():
     return jsonify({"error": "not found"}), 404
 
 
-# -------------------- VACCINES --------------------
+# Vaccines
 
 @app.post("/vaccine/add")
 def add_vaccine():
@@ -646,7 +641,7 @@ def delete_vaccine():
     return jsonify({"error": "not found"}), 404
 
 
-# -------------------- WEIGHT --------------------
+# Weight
 
 @app.post("/weight/add")
 def add_weight():
@@ -685,7 +680,7 @@ def delete_weight():
     return jsonify({"error": "not found"}), 404
 
 
-# -------------------- APPOINTMENTS --------------------
+# Appointments
 
 @app.post("/appointment/add")
 def add_appointment():
@@ -726,50 +721,7 @@ def delete_appointment():
     return jsonify({"error": "not found"}), 404
 
 
-# -------------------- AI MODULES --------------------
-
-@app.post("/ai/lifespan")
-def ai_lifespan():
-    if lifespan_model is None:
-        return jsonify({"error": "model not loaded. Run: python train_models.py"}), 500
-
-    age = request.json.get("age") if request.json else None
-    if age is None:
-        return jsonify({"error": "age is required"}), 400
-
-    pred = lifespan_model.predict([[float(age)]])[0]
-    return jsonify({"prediction": float(pred)})
-
-
-@app.post("/ai/health_score")
-def ai_health():
-    if health_model is None:
-        return jsonify({"error": "model not loaded. Run: python train_models.py"}), 500
-
-    body = request.json or {}
-    age = body.get("age")
-    weight = body.get("weight")
-    if age is None or weight is None:
-        return jsonify({"error": "age and weight are required"}), 400
-
-    x = [[float(age), float(weight)]]
-    pred = health_model.predict(x)[0]
-    return jsonify({"prediction": float(pred)})
-
-
-@app.post("/ai/breed_risk")
-def ai_breed():
-    if breed_model is None:
-        return jsonify({"error": "model not loaded. Run: python train_models.py"}), 500
-
-    age = request.json.get("age") if request.json else None
-    if age is None:
-        return jsonify({"error": "age is required"}), 400
-
-    x = [[float(age)]]
-    pred = breed_model.predict(x)[0]
-    return jsonify({"prediction": str(pred)})
-
+# AI
 
 @app.route("/ai/diagnose", methods=["POST"])
 def ai_diagnose():
@@ -789,7 +741,7 @@ def ai_diagnose():
     if not symptoms:
         return jsonify({"error": "symptoms is required"}), 400
 
-    # Combine species/age into text to provide tiny context
+    # Build text
     parts = []
     if species:
         parts.append(species)
@@ -802,7 +754,7 @@ def ai_diagnose():
     probs = diagnose_model.predict_proba(X)[0]
     classes = list(diagnose_model.classes_)
 
-    # top3
+    # Top 3
     top_idx = sorted(range(len(probs)), key=lambda i: float(probs[i]), reverse=True)[:3]
     top3 = [{"label": classes[i], "prob": float(probs[i])} for i in top_idx]
 
@@ -838,7 +790,7 @@ def ai_diagnose_llm():
     symptoms = (body.get("symptoms") or "").strip()
     species = (body.get("species") or "").strip()
     age = body.get("age", None)
-    mode = (body.get("mode") or "").strip().lower()  # 'llm_only' | ''
+    mode = (body.get("mode") or "").strip().lower()  # llm_only
     fallback_enabled = os.environ.get("VET_QA_FALLBACK", "1") == "1"
     if mode == "llm_only":
         fallback_enabled = False
@@ -866,7 +818,7 @@ def ai_diagnose_llm():
     parts.append(symptoms)
     ctx = ", ".join(parts)
 
-    # Heuristic category to steer LLM
+    # Triage category
     def _triage_category(txt: str) -> str:
         t = (txt or "").lower()
         if any(k in t for k in ["bleed", "blood", "cut", "wound", "lacer", "nail", "claw", "paw", "pad", "limp", "non weight", "not pressing", "holding up"]):
@@ -883,9 +835,9 @@ def ai_diagnose_llm():
 
     category = _triage_category(symptoms)
 
-    # LLM-only mode: ask for clean bullet points and return plain answer
+    # LLM-only response
     if mode == "llm_only":
-        # T5-friendly prompt
+        # Prompt
         bullet_prompt = (
             f"The likely medical causes for a {age} year old {species} with {symptoms} are:\n"
         )
@@ -912,7 +864,7 @@ def ai_diagnose_llm():
             "model": os.environ.get("VET_QA_MODEL", "ahmed807762/flan-t5-base-veterinaryQA_data-v2"),
         })
 
-    # Ask for strict JSON to avoid instruction echo and repetition
+    # JSON response
     prompt = (
         "You are a veterinary assistant. Analyze the case and reply with JSON ONLY.\n"
         f"Case -> species: {species or 'Unknown'}, age: {age if age is not None else 'Unknown'}, symptoms: {symptoms}.\n"
@@ -932,7 +884,7 @@ def ai_diagnose_llm():
     try:
         import json as _json
 
-        # Decoding tuned for structured JSON output
+        # JSON decoding
         sampling = os.environ.get("VET_QA_SAMPLING", "0") == "1"
         gen_kwargs = {
             "max_new_tokens": int(os.environ.get("VET_QA_MAX_TOKENS", 220)),
@@ -971,7 +923,7 @@ def ai_diagnose_llm():
 
         js = _try_parse(raw)
         if js is None:
-            # Fallback: attempt a lighter prompt without schema
+            # Fallback prompt
             alt_prompt = (
                 "Vet assistant concise JSON. Case: "
                 f"{ctx}. Keys: conditions(3x{{name,reason}}), red_flags[], care[]."
@@ -980,7 +932,7 @@ def ai_diagnose_llm():
             js = _try_parse(raw)
         source = "llm"
         if js is None and fallback_enabled:
-            # Last resort: use rule-based fallback, include raw for debugging
+            # Rule fallback
             fb = _fallback_suggestions(species, age, symptoms)
             js = {**fb, "raw": raw}
             source = "fallback"
@@ -990,7 +942,7 @@ def ai_diagnose_llm():
     except Exception as e:
         return jsonify({"error": f"generation failed: {e}"}), 500
 
-    # Normalize result lengths and types
+    # Normalize
     def _to_str(x):
         return str(x).strip()
 
@@ -1008,7 +960,7 @@ def ai_diagnose_llm():
     red_flags = [ _to_str(x) for x in (js.get("red_flags") or []) if _to_str(x) ]
     care = [ _to_str(x) for x in (js.get("care") or []) if _to_str(x) ]
 
-    # If everything is empty, optionally construct rule-based suggestions
+    # Fallback suggestions
     if not norm_conds and not red_flags and not care and fallback_enabled:
         fb = _fallback_suggestions(species, age, symptoms)
         norm_conds = fb.get("conditions", [])
@@ -1027,20 +979,7 @@ def ai_diagnose_llm():
     })
 
 
-# Optional aliases (in case you used /api/... in testing)
-@app.route("/api/ai/predict_lifespan", methods=["POST"])
-def api_predict_lifespan():
-    return ai_lifespan()
-
-@app.route("/api/ai/predict_health", methods=["POST"])
-def api_predict_health():
-    return ai_health()
-
-@app.route("/api/ai/predict_breed_risk", methods=["POST"])
-def api_predict_breed_risk():
-    return ai_breed()
-
-
+# API aliases
 @app.route("/api/ai/diagnose_llm", methods=["POST"])
 def api_diagnose_llm():
     return ai_diagnose_llm()

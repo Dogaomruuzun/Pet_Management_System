@@ -21,7 +21,7 @@ def main() -> None:
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
                 data: Dict[str, Any] = json.load(f)
-            # Ensure keys exist
+            # Ensure keys
             for k in [
                 "users",
                 "pets",
@@ -31,12 +31,12 @@ def main() -> None:
                 "appointments",
             ]:
                 data.setdefault(k, [])
-            replace_all(data)  # migrate JSON -> SQLite
+            replace_all(data)  # Migrate JSON
             print("Migrated existing data.json into the database.")
         except Exception as e:
             print("Warning: could not migrate data.json:", e)
     else:
-        # Seed with empty structures
+        # Empty seed
         replace_all(
             {
                 "users": [],
