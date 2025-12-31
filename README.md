@@ -10,7 +10,7 @@
 Pet Management Pro is a web-based veterinary clinic management system developed as a course project.  
 The system allows veterinarians to manage pets, owners, medical records, and appointments through a simple and user-friendly interface.
 
-The project includes an **AI-assisted backend** that provides predictive analytics related to pet health.
+The project includes an **AI-assisted backend** that provides intelligent diagnostic suggestions and triage advice based on symptoms.
 
 ---
 
@@ -20,7 +20,7 @@ This project fully satisfies the course requirements:
 
 1. Frontend is developed using **HTML, CSS, and JavaScript**
 2. Backend is developed using **Flask (Python)**
-3. An **AI model runs on the backend**
+3. An **AI model runs on the backend** (Transformer-based LLM)
 4. The project is under **Git source control**
 5. The project is stored and maintained on **GitHub**
 6. GitHub repository URL can be shared during development
@@ -45,7 +45,7 @@ This project fully satisfies the course requirements:
 - Manage owner information (name, phone, email, address)
 
 ### Medical Records
-- Add and search clinical history records
+- Clinical history records with attachments
 - Vaccination tracking with next due dates
 
 ### Appointments
@@ -59,13 +59,13 @@ This project fully satisfies the course requirements:
 
 ## AI Assistant (Backend)
 
-The backend includes machine learning models that provide:
+The backend integrates advanced AI capabilities for veterinary support:
 
-- **Lifespan prediction** (Regression)
-- **Health score prediction** (Regression)
-- **Breed risk classification** (Classification)
+- **AI Diagnostic Assistant**: Uses a fine-tuned **FLAN-T5 (Seq2Seq)** model (`ahmed807762/flan-t5-base-veterinaryQA_data-v2`) to generate educational diagnostic suggestions based on species, age, and symptoms.
+- **Intelligent Triage**: Automatically categorizes cases (e.g., Trauma, Gastrointestinal, Respiratory) using keyword analysis.
+- **Robust Fallback System**: Includes a rule-based fallback engine to provide safe suggestions even if the AI model is unavailable.
 
-AI models are trained using Python libraries and executed on the server side.
+All AI processing is performed locally on the server using `transformers` and `torch`.
 
 ---
 
@@ -83,8 +83,9 @@ AI models are trained using Python libraries and executed on the server side.
 - SQLite  
 
 ### AI / Machine Learning
-- Scikit-learn  
-- Pandas  
+- Transformers (Hugging Face)
+- PyTorch  
+- SentencePiece
 - NumPy  
 
 ### Tools
@@ -106,8 +107,8 @@ project-root/
 │ ├── app.py
 │ ├── db.py
 │ ├── init_db.py
-│ ├── train_models.py
-│ └── requirements.txt
+│ ├── requirements.txt
+│ └── model/ (Cached model artifacts)
 │
 └── README.md
 
@@ -117,10 +118,16 @@ project-root/
 
 ### Frontend
 
-Open index.html in a web browser.
+Open `frontend/index.html` in a web browser.  
+*(Ensure the backend is running for full functionality)*
+
 ### Backend
 
-pip install -r requirements.txt
-python init_db.py
-python train_models.py
-python app.py
+1. **Navigate to backend directory**
+ - 'cd backend'
+2. **Install Dependencies**
+ - 'pip install -r requirements.txt'
+3. **Initialize Database**
+ - 'python init_db.py'
+4. **Run Application**
+ - 'python app.py'
